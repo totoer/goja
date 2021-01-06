@@ -1766,15 +1766,17 @@ type declare struct {
 
 func (d *declare) exec(vm *vm) {
 	vm.runtimeScope.declare(d.name, d.typeOfScope)
+	vm.pc++
 }
 
 type setScopedValue struct {
 	name  unistring.String
-	value Value
 }
 
 func (s *setScopedValue) exec(vm *vm) {
-	vm.runtimeScope.setValue(s.name, s.value)
+	value := vm.pop()
+	vm.runtimeScope.setValue(s.name, value)
+	vm.pc++
 }
 
 type getScopedValue struct {
@@ -1784,6 +1786,7 @@ type getScopedValue struct {
 func (g *getScopedValue) exec(vm *vm) {
 	value := vm.runtimeScope.getValue(g.name)
 	vm.push(value)
+	vm.pc++
 }
 // End New Code
 

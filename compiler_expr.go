@@ -160,6 +160,7 @@ type compiledVariableExpr struct {
 	name        unistring.String
 	initializer compiledExpr
 	expr        *ast.VariableExpression
+	typeOfScope runtimeScopeType
 }
 
 type compiledEnumGetExpr struct {
@@ -1349,6 +1350,19 @@ func (c *compiler) compileLogicalAnd(left, right ast.Expression, idx file.Idx) c
 }
 
 func (e *compiledVariableExpr) emitGetter(putOnStack bool) {
+	e.c.emit(&declare{
+		name:        e.name,
+		typeOfScope: e.typeOfScope,
+	})	
+
+	if e.initializer != nil {
+		e.c.emitExpr(e.initializer, true)
+
+		e.c.emit(&setScopedValue{
+			name:  e.name,
+		})
+	}
+
 	// debug.PrintStack()
 	if e.initializer != nil {
 		idExpr := &compiledIdentifierExpr{
@@ -1367,9 +1381,18 @@ func (e *compiledVariableExpr) emitGetter(putOnStack bool) {
 }
 
 func (c *compiler) compileVariableExpression(v *ast.VariableExpression) compiledExpr {
+	var typeOfScope runtimeScopeType
+
+	if v.VarType == ast.VAR {
+		typeOfScope = functionScope
+	} else if v.VarType == ast.LET {
+		typeOfScope = blockScope
+	}
+
 	r := &compiledVariableExpr{
 		name:        v.Name,
 		initializer: c.compileExpression(v.Initializer),
+		typeOfScope: typeOfScope,
 	}
 	r.init(c, v.Idx0())
 	return r
