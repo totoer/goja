@@ -351,6 +351,7 @@ func (vm *vm) newStash() {
 }
 
 func (vm *vm) init() {
+	vm.newRuntimeScope(functionScope)
 }
 
 func (vm *vm) run() {
