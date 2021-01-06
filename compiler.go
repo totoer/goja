@@ -180,6 +180,7 @@ func (s *scope) isFunction() bool {
 }
 
 func (s *scope) lookupName(name unistring.String) (idx uint32, found, noDynamics bool) {
+	fmt.Println("lookupName: ", name)
 	var level uint32 = 0
 	noDynamics = true
 	for curScope := s; curScope != nil; curScope = curScope.outer {
@@ -258,7 +259,7 @@ func (c *compiler) compile(in *ast.Program) {
 		}
 	}
 
-	c.compileDeclList(in.DeclarationList, false)
+	// c.compileDeclList(in.DeclarationList, false)
 	c.compileFunctions(in.DeclarationList)
 
 	c.markBlockStart()

@@ -79,6 +79,7 @@ const (
 	DO
 
 	VAR
+	LET
 	FOR
 	NEW
 	TRY
@@ -173,6 +174,7 @@ var token2string = [...]string{
 	OF:                          "of",
 	DO:                          "do",
 	VAR:                         "var",
+	LET:                         "let",
 	FOR:                         "for",
 	NEW:                         "new",
 	TRY:                         "try",
@@ -209,6 +211,9 @@ var keywordTable = map[string]_keyword{
 	},
 	"var": {
 		token: VAR,
+	},
+	"let": {
+		token: LET,
 	},
 	"for": {
 		token: FOR,
@@ -310,11 +315,6 @@ var keywordTable = map[string]_keyword{
 		strict:        true,
 	},
 	"interface": {
-		token:         KEYWORD,
-		futureKeyword: true,
-		strict:        true,
-	},
-	"let": {
 		token:         KEYWORD,
 		futureKeyword: true,
 		strict:        true,

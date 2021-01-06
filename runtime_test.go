@@ -1955,3 +1955,54 @@ func BenchmarkAsciiStringMapGet(b *testing.B) {
 		}
 	}
 }
+
+func TestFoo(t *testing.T) {
+	const SCRIPT = `
+		var a = 1;
+		b = 2;
+
+		function foo() {
+			var c = 3;
+			return c;
+		}
+
+		var d = 4;
+
+		{
+			var d = 4;
+		}
+
+		o = {}
+		o.result = a + b + foo() + d;
+		o.result == 10;
+
+	`
+
+	testScript1(SCRIPT, valueTrue, t)
+}
+
+func TestBar(t *testing.T) {
+	const SCRIPT = `
+		function bar() {
+			var c = 0;
+		}
+
+		bar();
+
+		c == 0;
+	`
+
+	testScript1(SCRIPT, valueTrue, t)
+}
+
+func TestBaz(t *testing.T) {
+	const SCRIPT = `
+		{
+			let a = 1;
+		}
+		a = a + 1;
+		a == 2;
+	`
+
+	testScript1(SCRIPT, valueTrue, t)
+}

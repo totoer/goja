@@ -149,6 +149,7 @@ func isId(tkn token.Token) bool {
 		token.DO,
 
 		token.VAR,
+		token.LET,
 		token.FOR,
 		token.NEW,
 		token.TRY,

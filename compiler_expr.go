@@ -3,6 +3,7 @@ package goja
 import (
 	"fmt"
 	"regexp"
+	// "runtime/debug"
 
 	"github.com/dop251/goja/ast"
 	"github.com/dop251/goja/file"
@@ -178,7 +179,7 @@ func (e *defaultDeleteExpr) emitGetter(putOnStack bool) {
 }
 
 func (c *compiler) compileExpression(v ast.Expression) compiledExpr {
-	// log.Printf("compileExpression: %T", v)
+	fmt.Printf("compileExpression: %T\n", v)
 	switch v := v.(type) {
 	case nil:
 		return nil
@@ -1348,6 +1349,7 @@ func (c *compiler) compileLogicalAnd(left, right ast.Expression, idx file.Idx) c
 }
 
 func (e *compiledVariableExpr) emitGetter(putOnStack bool) {
+	// debug.PrintStack()
 	if e.initializer != nil {
 		idExpr := &compiledIdentifierExpr{
 			name: e.name,

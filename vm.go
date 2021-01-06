@@ -35,6 +35,53 @@ type context struct {
 	args      int
 }
 
+// New Code
+type runtimeScopeType int
+
+const (
+	functionScope runtimeScopeType = iota
+	blockScope
+)
+
+type runtimeScope struct {
+	typeOfScope runtimeScopeType
+	values      map[unistring.String]Value
+	outer       *runtimeScope
+}
+
+func (s *runtimeScope) declare(name unistring.String, typeOfScope runtimeScopeType) {
+	if typeOfScope == s.typeOfScope || (s.typeOfScope == functionScope && typeOfScope == blockScope) {
+		s.values[name] = _undefined
+	} else {
+		for currentRuntimeScope := s; s != nil; currentRuntimeScope = s.outer {
+			if currentRuntimeScope.typeOfScope == functionScope {
+				currentRuntimeScope.values[name] = _undefined
+				break
+			}
+		}
+	}
+}
+
+func (s *runtimeScope) setValue(name unistring.String, value Value) {
+	for currentRuntimeScope := s; s != nil; s = currentRuntimeScope.outer {
+		if _, ok := s.values[name]; ok {
+			s.values[name] = value
+			break
+		}
+	}
+}
+
+func (s *runtimeScope) getValue(name unistring.String) Value {
+	for currentRuntimeScope := s; s != nil; s = currentRuntimeScope.outer {
+		if value, ok := s.values[name]; ok {
+			return value
+		}
+	}
+
+	return _undefined
+}
+// End New Code
+
 type iterStackItem struct {
 	val  Value
 	f    iterNextFunc
@@ -108,11 +155,12 @@ type vm struct {
 	stack        valueStack
 	sp, sb, args int
 
-	stash     *stash
-	callStack []context
-	iterStack []iterStackItem
-	refStack  []ref
-	newTarget Value
+	runtimeScope *runtimeScope
+	stash        *stash
+	callStack    []context
+	iterStack    []iterStackItem
+	refStack     []ref
+	newTarget    Value
 
 	stashAllocs int
 	halt        bool
@@ -120,6 +168,14 @@ type vm struct {
 	interrupted   uint32
 	interruptVal  interface{}
 	interruptLock sync.Mutex
+}
+
+func (vm *vm) newRuntimeScope(typeOfScope runtimeScopeType) {
+	vm.runtimeScope = &runtimeScope{
+		typeOfScope: typeOfScope,
+		values:      make(map[unistring.String]Value),
+		outer:       vm.runtimeScope,
+	}
 }
 
 type instruction interface {
@@ -1702,6 +1758,35 @@ func (n getVar1Callee) exec(vm *vm) {
 	vm.pc++
 }
 
+// New Code
+type declare struct {
+	name        unistring.String
+	typeOfScope runtimeScopeType
+}
+
+func (d *declare) exec(vm *vm) {
+	vm.runtimeScope.declare(d.name, d.typeOfScope)
+}
+
+type setScopedValue struct {
+	name  unistring.String
+	value Value
+}
+
+func (s *setScopedValue) exec(vm *vm) {
+	vm.runtimeScope.setValue(s.name, s.value)
+}
+
+type getScopedValue struct {
+	name unistring.String
+}
+
+func (g *getScopedValue) exec(vm *vm) {
+	value := vm.runtimeScope.getValue(g.name)
+	vm.push(value)
+}
+// End New Code
+
 type _pop struct{}
 
 var pop _pop
@@ -2448,6 +2533,26 @@ func (_leaveWith) exec(vm *vm) {
 	vm.stash = vm.stash.outer
 	vm.pc++
 }
+
+// New Code
+type _enterBlock struct{}
+var enterBlock _enterBlock
+
+func (_enterBlock) exec(vm *vm) {
+	vm.newRuntimeScope(blockScope)
+	vm.pc++
+}
+
+type _leaveBlock struct{}
+var leaveBlock _leaveBlock
+
+func (_leaveBlock) exec(vm *vm) {
+	if vm.runtimeScope != nil {
+		vm.runtimeScope = vm.runtimeScope.outer
+	}
+	vm.pc++
+}
+// End New Code
 
 func emptyIter() (propIterItem, iterNextFunc) {
 	return propIterItem{}, nil

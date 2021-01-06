@@ -15,6 +15,14 @@ import (
 	"github.com/dop251/goja/unistring"
 )
 
+type VarType int
+
+const (
+	VAR VarType = iota
+	LET
+	CONST
+)
+
 // All nodes implement the Node interface.
 type Node interface {
 	Idx0() file.Idx // The index of the first character belonging to the node
@@ -171,6 +179,7 @@ type (
 		Name        unistring.String
 		Idx         file.Idx
 		Initializer Expression
+		VarType     VarType
 	}
 
 	MetaProperty struct {
@@ -322,8 +331,8 @@ type (
 	}
 
 	VariableStatement struct {
-		Var  file.Idx
-		List []Expression
+		Var     file.Idx
+		List    []Expression
 	}
 
 	WhileStatement struct {

@@ -14,10 +14,12 @@ import (
 )
 
 func (self *_parser) parseBlockStatement() *ast.BlockStatement {
+	self.openScope()
 	node := &ast.BlockStatement{}
 	node.LeftBrace = self.expect(token.LEFT_BRACE)
 	node.List = self.parseStatementList()
 	node.RightBrace = self.expect(token.RIGHT_BRACE)
+	self.closeScope()
 
 	return node
 }
@@ -64,7 +66,9 @@ func (self *_parser) parseStatement() ast.Statement {
 	case token.WITH:
 		return self.parseWithStatement()
 	case token.VAR:
-		return self.parseVariableStatement()
+		return self.parseVariableStatement(token.VAR)
+	case token.LET:
+		return self.parseVariableStatement(token.LET)
 	case token.FUNCTION:
 		self.parseFunction(true)
 		// FIXME
@@ -434,7 +438,7 @@ func (self *_parser) parseForOrForInStatement() ast.Statement {
 		if self.token == token.VAR {
 			var_ := self.idx
 			self.next()
-			list := self.parseVariableDeclarationList(var_)
+			list := self.parseVariableDeclarationList(var_, token.VAR)
 			if len(list) == 1 {
 				if self.token == token.IN {
 					self.next() // in
@@ -481,11 +485,11 @@ func (self *_parser) parseForOrForInStatement() ast.Statement {
 	return self.parseFor(idx, &ast.SequenceExpression{Sequence: left})
 }
 
-func (self *_parser) parseVariableStatement() *ast.VariableStatement {
+func (self *_parser) parseVariableStatement(t token.Token) *ast.VariableStatement {
 
-	idx := self.expect(token.VAR)
+	idx := self.expect(t)
 
-	list := self.parseVariableDeclarationList(idx)
+	list := self.parseVariableDeclarationList(idx, t)
 	self.semicolon()
 
 	return &ast.VariableStatement{

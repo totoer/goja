@@ -140,7 +140,7 @@ func (self *_parser) parseRegExpLiteral() *ast.RegExpLiteral {
 	}
 }
 
-func (self *_parser) parseVariableDeclaration(declarationList *[]*ast.VariableExpression) ast.Expression {
+func (self *_parser) parseVariableDeclaration(declarationList *[]*ast.VariableExpression, t token.Token) ast.Expression {
 
 	if self.token != token.IDENTIFIER {
 		idx := self.expect(token.IDENTIFIER)
@@ -150,10 +150,21 @@ func (self *_parser) parseVariableDeclaration(declarationList *[]*ast.VariableEx
 
 	name := self.parsedLiteral
 	idx := self.idx
+	
+	var varType ast.VarType
+
+	if t == token.VAR {
+		varType = ast.VAR
+	} else if t == token.LET {
+		varType = ast.LET
+	}
+
 	self.next()
+
 	node := &ast.VariableExpression{
-		Name: name,
-		Idx:  idx,
+		Name:    name,
+		Idx:     idx,
+		VarType: varType,
 	}
 
 	if declarationList != nil {
@@ -168,13 +179,13 @@ func (self *_parser) parseVariableDeclaration(declarationList *[]*ast.VariableEx
 	return node
 }
 
-func (self *_parser) parseVariableDeclarationList(var_ file.Idx) []ast.Expression {
+func (self *_parser) parseVariableDeclarationList(var_ file.Idx, t token.Token) []ast.Expression {
 
 	var declarationList []*ast.VariableExpression // Avoid bad expressions
 	var list []ast.Expression
 
 	for {
-		list = append(list, self.parseVariableDeclaration(&declarationList))
+		list = append(list, self.parseVariableDeclaration(&declarationList, t))
 		if self.token != token.COMMA {
 			break
 		}
