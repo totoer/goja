@@ -3,6 +3,7 @@ package goja
 import (
 	"fmt"
 	"regexp"
+
 	// "runtime/debug"
 
 	"github.com/dop251/goja/ast"
@@ -287,7 +288,14 @@ func (e *constantExpr) emitGetter(putOnStack bool) {
 
 func (e *compiledIdentifierExpr) emitGetter(putOnStack bool) {
 	e.addSrcMap()
-	if idx, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
+
+	e.c.emit(&getScopedValue{name: e.name})
+
+	if !putOnStack {
+		e.c.emit(pop)
+	}
+
+	/* if idx, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
 		if found {
 			if putOnStack {
 				e.c.emit(getLocal(idx))
@@ -304,12 +312,14 @@ func (e *compiledIdentifierExpr) emitGetter(putOnStack bool) {
 		if !putOnStack {
 			e.c.emit(pop)
 		}
-	}
+	} */
 }
 
 func (e *compiledIdentifierExpr) emitGetterOrRef() {
 	e.addSrcMap()
-	if idx, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
+	e.emitGetter(true)
+
+	/* if idx, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
 		if found {
 			e.c.emit(getLocal(idx))
 		} else {
@@ -321,12 +331,14 @@ func (e *compiledIdentifierExpr) emitGetterOrRef() {
 		} else {
 			e.c.emit(getVar1Ref(e.name))
 		}
-	}
+	} */
 }
 
 func (e *compiledIdentifierExpr) emitGetterAndCallee() {
 	e.addSrcMap()
-	if idx, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
+	e.emitGetter(true)
+
+	/* if idx, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
 		if found {
 			e.c.emit(loadUndef)
 			e.c.emit(getLocal(idx))
@@ -339,10 +351,10 @@ func (e *compiledIdentifierExpr) emitGetterAndCallee() {
 		} else {
 			e.c.emit(getVar1Callee(e.name))
 		}
-	}
+	} */
 }
 
-func (c *compiler) emitVarSetter1(name unistring.String, offset int, emitRight func(isRef bool)) {
+/* func (c *compiler) emitVarSetter1(name unistring.String, offset int, emitRight func(isRef bool)) {
 	if c.scope.strict {
 		c.checkIdentifierLName(name, offset)
 	}
@@ -373,25 +385,51 @@ func (c *compiler) emitVarSetter1(name unistring.String, offset int, emitRight f
 			c.emit(putValue)
 		}
 	}
-}
+} */
 
-func (c *compiler) emitVarSetter(name unistring.String, offset int, valueExpr compiledExpr) {
+/* func (c *compiler) emitVarSetter(name unistring.String, offset int, valueExpr compiledExpr) {
 	c.emitVarSetter1(name, offset, func(bool) {
 		c.emitExpr(valueExpr, true)
 	})
+} */
+
+func (c *compiler) emitVarSetter(name unistring.String, valueExpr compiledExpr) {
+	/* c.emitVarSetter1(name, offset, func(bool) {
+		c.emitExpr(valueExpr, true)
+	}) */
+	c.emitExpr(valueExpr, true)
+	c.emit(&setScopedValue{name: name})
 }
 
 func (e *compiledVariableExpr) emitSetter(valueExpr compiledExpr) {
-	e.c.emitVarSetter(e.name, e.offset, valueExpr)
+	e.c.emitVarSetter(e.name, valueExpr)
 }
 
 func (e *compiledIdentifierExpr) emitSetter(valueExpr compiledExpr) {
-	e.c.emitVarSetter(e.name, e.offset, valueExpr)
+	e.c.emitVarSetter(e.name, valueExpr)
 }
 
+// nil, func() { e.right.emitGetter(true); e.c.emit(add) }, false, putOnStack
 func (e *compiledIdentifierExpr) emitUnary(prepare, body func(), postfix, putOnStack bool) {
 	if putOnStack {
-		e.c.emitVarSetter1(e.name, e.offset, func(isRef bool) {
+		e.c.emit(loadUndef)
+
+		if prepare != nil {
+			prepare()
+		}
+		if !postfix {
+			body()
+		}
+		e.c.emit(rdupN(1))
+		if postfix {
+			body()
+		}
+
+		e.c.emit(&setScopedValue{name: e.name})
+
+		// e.c.emit(pop)
+
+		/* e.c.emitVarSetter1(e.name, e.offset, func(isRef bool) {
 			e.c.emit(loadUndef)
 			if isRef {
 				e.c.emit(getValue)
@@ -409,9 +447,12 @@ func (e *compiledIdentifierExpr) emitUnary(prepare, body func(), postfix, putOnS
 				body()
 			}
 		})
-		e.c.emit(pop)
+		e.c.emit(pop) */
 	} else {
-		e.c.emitVarSetter1(e.name, e.offset, func(isRef bool) {
+		body()
+		e.c.emit(&setScopedValue{name: e.name})
+		// e.c.emit(pop)
+		/* e.c.emitVarSetter1(e.name, e.offset, func(isRef bool) {
 			if isRef {
 				e.c.emit(getValue)
 			} else {
@@ -419,7 +460,7 @@ func (e *compiledIdentifierExpr) emitUnary(prepare, body func(), postfix, putOnS
 			}
 			body()
 		})
-		e.c.emit(pop)
+		e.c.emit(pop) */
 	}
 }
 
@@ -731,9 +772,9 @@ func (e *compiledAssignExpr) emitGetter(putOnStack bool) {
 	default:
 		panic(fmt.Errorf("Unknown assign operator: %s", e.operator.String()))
 	}
-	if !putOnStack {
+	/* if !putOnStack {
 		e.c.emit(pop)
-	}
+	} */
 }
 
 func (e *compiledLiteral) emitGetter(putOnStack bool) {
@@ -1353,18 +1394,22 @@ func (e *compiledVariableExpr) emitGetter(putOnStack bool) {
 	e.c.emit(&declare{
 		name:        e.name,
 		typeOfScope: e.typeOfScope,
-	})	
+	})
 
 	if e.initializer != nil {
 		e.c.emitExpr(e.initializer, true)
 
 		e.c.emit(&setScopedValue{
-			name:  e.name,
+			name: e.name,
 		})
 	}
 
+	/* if !putOnStack {
+		e.c.emit(pop)
+	} */
+
 	// debug.PrintStack()
-	if e.initializer != nil {
+	/* if e.initializer != nil {
 		idExpr := &compiledIdentifierExpr{
 			name: e.name,
 		}
@@ -1377,7 +1422,7 @@ func (e *compiledVariableExpr) emitGetter(putOnStack bool) {
 		if putOnStack {
 			e.c.emit(loadUndef)
 		}
-	}
+	} */
 }
 
 func (c *compiler) compileVariableExpression(v *ast.VariableExpression) compiledExpr {

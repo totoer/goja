@@ -11,7 +11,7 @@ import (
 )
 
 func (c *compiler) compileStatement(v ast.Statement, needResult bool) {
-	// log.Printf("compileStatement(): %T", v)
+	fmt.Printf("compileStatement(): %T\n", v)
 
 	switch v := v.(type) {
 	case *ast.BlockStatement:

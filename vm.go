@@ -80,6 +80,7 @@ func (s *runtimeScope) getValue(name unistring.String) Value {
 
 	return _undefined
 }
+
 // End New Code
 
 type iterStackItem struct {
@@ -360,6 +361,7 @@ func (vm *vm) run() {
 		if interrupted = atomic.LoadUint32(&vm.interrupted) != 0; interrupted {
 			break
 		}
+		fmt.Printf("Exec %T at %d\n", vm.prg.code[vm.pc], ticks)
 		vm.prg.code[vm.pc].exec(vm)
 		ticks++
 		if ticks > 10000 {
@@ -1770,7 +1772,7 @@ func (d *declare) exec(vm *vm) {
 }
 
 type setScopedValue struct {
-	name  unistring.String
+	name unistring.String
 }
 
 func (s *setScopedValue) exec(vm *vm) {
@@ -1788,6 +1790,7 @@ func (g *getScopedValue) exec(vm *vm) {
 	vm.push(value)
 	vm.pc++
 }
+
 // End New Code
 
 type _pop struct{}
@@ -2539,6 +2542,7 @@ func (_leaveWith) exec(vm *vm) {
 
 // New Code
 type _enterBlock struct{}
+
 var enterBlock _enterBlock
 
 func (_enterBlock) exec(vm *vm) {
@@ -2547,6 +2551,7 @@ func (_enterBlock) exec(vm *vm) {
 }
 
 type _leaveBlock struct{}
+
 var leaveBlock _leaveBlock
 
 func (_leaveBlock) exec(vm *vm) {
@@ -2555,6 +2560,7 @@ func (_leaveBlock) exec(vm *vm) {
 	}
 	vm.pc++
 }
+
 // End New Code
 
 func emptyIter() (propIterItem, iterNextFunc) {
