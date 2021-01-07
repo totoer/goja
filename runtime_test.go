@@ -44,7 +44,7 @@ func Test2TierHierarchyProp(t *testing.T) {
 	var c = Object.create(b);
 	c.test = 43;
 	c.test === 42 && !b.hasOwnProperty("test");
-
+	c.test === 43;
 	`
 
 	testScript1(SCRIPT, valueTrue, t)
@@ -1997,12 +1997,9 @@ func TestBar(t *testing.T) {
 
 func TestBaz(t *testing.T) {
 	const SCRIPT = `
-		{
-			let a = 1;
-			a = a + 1;
-			let b = 2;
-			a == b;
-		}
+		let a = {};
+		a.test = 1;
+		a.test == 1;
 	`
 
 	testScript1(SCRIPT, valueTrue, t)

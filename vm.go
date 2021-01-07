@@ -478,14 +478,22 @@ func (vm *vm) runTry() (ex *Exception) {
 }
 
 func (vm *vm) push(v Value) {
-	vm.stack.expand(vm.sp)
+	/* vm.stack.expand(vm.sp)
 	vm.stack[vm.sp] = v
-	vm.sp++
+	vm.sp++ */
+	vm.stack = append(vm.stack, v)
 }
 
 func (vm *vm) pop() Value {
-	vm.sp--
-	return vm.stack[vm.sp]
+	if len(vm.stack) > 0 {
+		n := len(vm.stack) - 1
+		value := vm.stack[n]
+		vm.stack = vm.stack[:n]
+		return value
+	}
+	return nil
+	/* vm.sp--
+	return vm.stack[vm.sp] */
 }
 
 func (vm *vm) peek() Value {
@@ -1120,11 +1128,17 @@ func (d deletePropStrict) exec(vm *vm) {
 type setProp unistring.String
 
 func (p setProp) exec(vm *vm) {
-	val := vm.stack[vm.sp-1]
-	vm.stack[vm.sp-2].ToObject(vm.r).self.setOwnStr(unistring.String(p), val, false)
-	vm.stack[vm.sp-2] = val
-	vm.sp--
+	value := vm.pop()
+	obj := vm.pop()
+
+	obj.ToObject(vm.r).self.setOwnStr(unistring.String(p), value, false)
+
 	vm.pc++
+
+	/* vm.stack[vm.sp-2].ToObject(vm.r).self.setOwnStr(unistring.String(p), value, false)
+	vm.stack[vm.sp-2] = value
+	vm.sp--
+	vm.pc++ */
 }
 
 type setPropStrict unistring.String
@@ -1199,14 +1213,26 @@ func (s setPropSetter) exec(vm *vm) {
 type getProp unistring.String
 
 func (g getProp) exec(vm *vm) {
-	v := vm.stack[vm.sp-1]
+	value := vm.pop()
+	obj := value.baseObject(vm.r)
+
+	if obj == nil {
+		panic(vm.r.NewTypeError("Cannot read property '%s' of undefined", g))
+	}
+
+	propValue := nilSafe(obj.self.getStr(unistring.String(g), value))
+	vm.push(propValue)
+
+	vm.pc++
+
+	/* v := vm.stack[vm.sp-1]
 	obj := v.baseObject(vm.r)
 	if obj == nil {
 		panic(vm.r.NewTypeError("Cannot read property '%s' of undefined", g))
 	}
 	vm.stack[vm.sp-1] = nilSafe(obj.self.getStr(unistring.String(g), v))
 
-	vm.pc++
+	vm.pc++ */
 }
 
 type getPropCallee unistring.String
@@ -1788,6 +1814,14 @@ type getScopedValue struct {
 
 func (g *getScopedValue) exec(vm *vm) {
 	value := vm.runtimeScope.getValue(g.name)
+
+	if value == _undefined {
+		value = vm.r.globalObject.self.getStr(g.name, nil)
+		if value == nil {
+			vm.r.throwReferenceError(g.name)
+		}
+	}
+
 	vm.push(value)
 	vm.pc++
 }
@@ -2238,12 +2272,15 @@ type _op_eq struct{}
 var op_eq _op_eq
 
 func (_op_eq) exec(vm *vm) {
-	if vm.stack[vm.sp-2].Equals(vm.stack[vm.sp-1]) {
-		vm.stack[vm.sp-2] = valueTrue
+	firstValue := vm.pop()
+	secondValue := vm.pop()
+
+	if firstValue.Equals(secondValue) {
+		vm.push(valueTrue)
 	} else {
-		vm.stack[vm.sp-2] = valueFalse
+		vm.push(valueFalse)
 	}
-	vm.sp--
+
 	vm.pc++
 }
 
