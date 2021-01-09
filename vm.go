@@ -60,8 +60,6 @@ func (s *runtimeScope) declare(name unistring.String, typeOfScope runtimeScopeTy
 			}
 		}
 	}
-
-	s.printScope()
 }
 
 func (s *runtimeScope) existsValue(name unistring.String, typeOfScope runtimeScopeType) bool {
@@ -87,7 +85,6 @@ func (s *runtimeScope) setValue(name unistring.String, value Value) {
 			break
 		}
 	}
-	s.printScope()
 }
 
 func (s *runtimeScope) getValue(name unistring.String) (Value, bool) {
@@ -384,6 +381,8 @@ func (vm *vm) init() {
 }
 
 func (vm *vm) run() {
+	fmt.Printf("Run\n\n")
+
 	vm.halt = false
 	interrupted := false
 	ticks := 0
@@ -391,8 +390,23 @@ func (vm *vm) run() {
 		if interrupted = atomic.LoadUint32(&vm.interrupted) != 0; interrupted {
 			break
 		}
-		fmt.Printf("Exec %T at %d\n", vm.prg.code[vm.pc], ticks)
+		fmt.Println("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+		fmt.Printf("Exec %T[%v] at %d\n", vm.prg.code[vm.pc], vm.prg.code[vm.pc], ticks)
+		fmt.Printf("Stack: [")
+		for _, value := range vm.stack {
+			fmt.Printf("Value: %v ", value.String())
+		}
+		fmt.Printf("]\n")
+		vm.runtimeScope.printScope()
 		vm.prg.code[vm.pc].exec(vm)
+		fmt.Printf("End exec\n")
+		fmt.Printf("Stack: [")
+		for _, value := range vm.stack {
+			fmt.Printf("Value: %v ", value.String())
+		}
+		fmt.Printf("]\n")
+		vm.runtimeScope.printScope()
+		fmt.Printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n")
 		ticks++
 		if ticks > 10000 {
 			runtime.Gosched()
@@ -2033,7 +2047,6 @@ func (_leaveFunction) exec(vm *vm) {
 		vm.runtimeScope = vm.runtimeScope.outer
 	}
 	vm.pc++
-	vm.runtimeScope.printScope()
 }
 
 /*func (e enterFunc) exec(vm *vm) {
@@ -2084,7 +2097,6 @@ func (_ret) exec(vm *vm) {
 	if vm.runtimeScope != nil {
 		vm.runtimeScope = vm.runtimeScope.outer
 	}
-	vm.runtimeScope.printScope()
 	vm.popCtx()
 	if vm.pc < 0 {
 		vm.halt = true
@@ -2670,7 +2682,6 @@ func (_leaveBlock) exec(vm *vm) {
 		vm.runtimeScope = vm.runtimeScope.outer
 	}
 	vm.pc++
-	vm.runtimeScope.printScope()
 }
 
 // End New Code

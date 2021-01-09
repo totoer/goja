@@ -336,6 +336,7 @@ func (e *compiledIdentifierExpr) emitGetterOrRef() {
 
 func (e *compiledIdentifierExpr) emitGetterAndCallee() {
 	e.addSrcMap()
+	e.c.emit(loadGlobalObject)
 	e.emitGetter(true)
 
 	/* if idx, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {

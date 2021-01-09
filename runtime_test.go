@@ -1973,9 +1973,8 @@ func TestFoo(t *testing.T) {
 		}
 
 		var o = {};
-		o.result = a + b + foo() + d;
+		o.result = a + foo();
 		o.result == 10;
-
 	`
 
 	testScript1(SCRIPT, valueTrue, t)
@@ -1997,15 +1996,15 @@ func TestBar(t *testing.T) {
 
 func TestBaz(t *testing.T) {
 	const SCRIPT = `
-		let a = {
-			baz: 1,
-			foo: 2
-		};
-		var b = 1;
-		a.test = function(a) {
-			return a + this.baz;
+		function foo() {
+			var a = 1;
+			return a;
 		}
-		a.test(b) == a.foo;
+
+		var o = {}
+		o.result = foo() + 2;
+
+		o.result == 3;
 	`
 
 	testScript1(SCRIPT, valueTrue, t)
