@@ -1308,14 +1308,16 @@ type _getElem struct{}
 var getElem _getElem
 
 func (_getElem) exec(vm *vm) {
-	v := vm.stack[vm.sp-2]
-	obj := v.baseObject(vm.r)
-	propName := toPropertyKey(vm.stack[vm.sp-1])
+	key, value := vm.pop(), vm.pop()
+
+	obj := value.baseObject(vm.r)
+	propName := toPropertyKey(key)
 	if obj == nil {
 		panic(vm.r.NewTypeError("Cannot read property '%s' of undefined", propName.String()))
 	}
 
-	vm.stack[vm.sp-2] = nilSafe(obj.get(propName, v))
+	result := nilSafe(obj.get(propName, value))
+	vm.push(result)
 
 	vm.sp--
 	vm.pc++
