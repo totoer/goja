@@ -2216,7 +2216,8 @@ func (j jeq1) exec(vm *vm) {
 type jneq1 int32
 
 func (j jneq1) exec(vm *vm) {
-	if !vm.stack[vm.sp-1].ToBoolean() {
+	value := vm.pop()
+	if !value.ToBoolean() {
 		vm.pc += int(j)
 	} else {
 		vm.pc++
