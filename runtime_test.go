@@ -1966,14 +1966,14 @@ func TestFoo(t *testing.T) {
 			return c;
 		}
 
-		var d = 4;
+		let d = 4;
 
 		{
-			var d = 4;
+			let d = 100;
 		}
 
 		var o = {};
-		o.result = a + foo();
+		o.result = a + b + foo() + d;
 		o.result == 10;
 	`
 
@@ -2001,7 +2001,7 @@ func TestBaz(t *testing.T) {
 			return a;
 		}
 
-		var o = {}
+		o = {}
 		o.result = foo() + 2;
 
 		o.result == 3;

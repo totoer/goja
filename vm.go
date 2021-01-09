@@ -78,13 +78,15 @@ func (s *runtimeScope) existsValue(name unistring.String, typeOfScope runtimeSco
 	return false
 }
 
-func (s *runtimeScope) setValue(name unistring.String, value Value) {
+func (s *runtimeScope) setValue(name unistring.String, value Value) bool {
 	for buffer := s; buffer != nil; buffer = buffer.outer {
 		if _, ok := buffer.values[name]; ok {
 			buffer.values[name] = value
-			break
+			return true
 		}
 	}
+
+	return false
 }
 
 func (s *runtimeScope) getValue(name unistring.String) (Value, bool) {
@@ -1852,7 +1854,10 @@ type setScopedValue struct {
 
 func (s *setScopedValue) exec(vm *vm) {
 	value := vm.pop()
-	vm.runtimeScope.setValue(s.name, value)
+	ok := vm.runtimeScope.setValue(s.name, value)
+	if !ok {
+		vm.r.globalObject.self.setOwnStr(s.name, value, false)
+	}
 	vm.pc++
 }
 
