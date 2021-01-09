@@ -955,17 +955,17 @@ type _inc struct{}
 var inc _inc
 
 func (_inc) exec(vm *vm) {
-	v := vm.stack[vm.sp-1]
+	value := vm.pop()
 
-	if i, ok := assertInt64(v); ok {
-		v = intToValue(i + 1)
+	if i, ok := assertInt64(value); ok {
+		value = intToValue(i + 1)
 		goto end
 	}
 
-	v = valueFloat(v.ToFloat() + 1)
+	value = valueFloat(value.ToFloat() + 1)
 
 end:
-	vm.stack[vm.sp-1] = v
+	vm.push(value)
 	vm.pc++
 }
 
@@ -2703,13 +2703,12 @@ type _enumerate struct{}
 var enumerate _enumerate
 
 func (_enumerate) exec(vm *vm) {
-	v := vm.stack[vm.sp-1]
-	if v == _undefined || v == _null {
+	value := vm.pop()
+	if value == _undefined || value == _null {
 		vm.iterStack = append(vm.iterStack, iterStackItem{f: emptyIter})
 	} else {
-		vm.iterStack = append(vm.iterStack, iterStackItem{f: v.ToObject(vm.r).self.enumerate()})
+		vm.iterStack = append(vm.iterStack, iterStackItem{f: value.ToObject(vm.r).self.enumerate()})
 	}
-	vm.sp--
 	vm.pc++
 }
 
