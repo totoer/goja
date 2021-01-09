@@ -1271,6 +1271,7 @@ func (e *compiledUnaryExpr) emitGetter(putOnStack bool) {
 	case token.DECREMENT:
 		prepare = toNumber
 		body = func() {
+			e.operand.emitGetter(true)
 			e.c.emit(dec)
 		}
 	case token.VOID:

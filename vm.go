@@ -974,17 +974,17 @@ type _dec struct{}
 var dec _dec
 
 func (_dec) exec(vm *vm) {
-	v := vm.stack[vm.sp-1]
+	value := vm.pop()
 
-	if i, ok := assertInt64(v); ok {
-		v = intToValue(i - 1)
+	if i, ok := assertInt64(value); ok {
+		value = intToValue(i - 1)
 		goto end
 	}
 
-	v = valueFloat(v.ToFloat() - 1)
+	value = valueFloat(value.ToFloat() - 1)
 
 end:
-	vm.stack[vm.sp-1] = v
+	vm.push(value)
 	vm.pc++
 }
 
