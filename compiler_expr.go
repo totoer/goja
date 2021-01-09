@@ -789,6 +789,73 @@ func (e *compiledLiteral) constant() bool {
 }
 
 func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
+	var name unistring.String
+	if e.expr.Name != nil {
+		name = e.expr.Name.Name
+
+		e.c.emit(&declare{
+			name:        name,
+			typeOfScope: functionScope,
+		})
+	}
+
+	savedPrg := e.c.p
+	e.c.p = &Program{
+		src: e.c.p.src,
+	}
+	e.c.currentBlock = blockFunction
+
+	e.c.emit(enterFunction)
+
+	e.c.emit(&declare{
+		name:        unistring.String("this"),
+		typeOfScope: functionScope,
+	})
+
+	e.c.emit(&setScopedValue{
+		name: unistring.String("this"),
+	})
+
+	for _, param := range e.expr.ParameterList.List {
+		e.c.emit(&declare{
+			name:        param.Name,
+			typeOfScope: functionScope,
+		})
+
+		e.c.emit(&setScopedValue{
+			name: param.Name,
+		})
+	}
+
+	e.c.compileFunctions(e.expr.DeclarationList)
+	e.c.compileStatement(e.expr.Body, false)
+
+	e.c.emit(leaveFunction)
+
+	p := e.c.p
+	e.c.p = savedPrg
+
+	length := len(e.expr.ParameterList.List)
+
+	e.c.emit(&newFunc{
+		prg:      p,
+		length:   uint32(length),
+		name:     name,
+		srcStart: uint32(e.expr.Idx0() - 1),
+		srcEnd:   uint32(e.expr.Idx1() - 1),
+		strict:   true,
+	})
+
+	if !putOnStack {
+		e.c.emit(pop)
+	}
+
+	/* maxPreambleLen := 2
+	functionCode := make([]instruction, maxPreambleLen)
+	c.p.code = append(c.p.code, instructions...)
+
+	e.c.emit(loadUndef, ret)
+
 	e.c.newScope()
 	savedBlockStart := e.c.blockStart
 	savedPrg := e.c.p
@@ -799,6 +866,10 @@ func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
 
 	if e.expr.Name != nil {
 		e.c.p.funcName = e.expr.Name.Name
+		e.c.emit(&declare{
+			name:        e.c.p.funcName,
+			typeOfScope: functionScope,
+		})
 	}
 	block := e.c.block
 	e.c.block = nil
@@ -829,7 +900,7 @@ func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
 			return
 		}
 	}
-	paramsCount := len(e.c.scope.names)
+	// paramsCount := len(e.c.scope.names)
 	e.c.compileDeclList(e.expr.DeclarationList, true)
 	var needCallee bool
 	var calleeIdx uint32
@@ -851,9 +922,9 @@ func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
 
 	if e.c.blockStart >= len(e.c.p.code)-1 || e.c.p.code[len(e.c.p.code)-1] != ret {
 		e.c.emit(loadUndef, ret)
-	}
+	} */
 
-	if !e.c.scope.dynamic && !e.c.scope.accessed {
+	/* if !e.c.scope.dynamic && !e.c.scope.accessed {
 		// log.Printf("Function can use inline stash")
 		l := 0
 		if !e.c.scope.strict && e.c.scope.thisNeeded {
@@ -909,6 +980,47 @@ func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
 		for i := range e.c.p.srcMap {
 			e.c.p.srcMap[i].pc += l - maxPreambleLen
 		}
+	} */
+
+	/* l := 1 + len(e.c.scope.names)
+	if e.c.scope.argsNeeded {
+		l += 2
+	}
+	if !e.c.scope.strict && e.c.scope.thisNeeded {
+		l++
+	}
+
+	code := make([]instruction, l+len(e.c.p.code)-maxPreambleLen)
+	code[0] = enterFunc(length)
+	for name, nameIdx := range e.c.scope.names {
+		code[nameIdx+1] = bindName(name)
+	}
+	pos := 1 + len(e.c.scope.names)
+
+	if !e.c.scope.strict && e.c.scope.thisNeeded {
+		code[pos] = boxThis
+		pos++
+	}
+
+	if e.c.scope.argsNeeded {
+		if e.c.scope.strict {
+			code[pos] = createArgsStrict(length)
+		} else {
+			code[pos] = createArgs(length)
+		}
+		pos++
+		idx, exists := e.c.scope.names["arguments"]
+		if !exists {
+			panic("No arguments")
+		}
+		code[pos] = setLocalP(idx)
+		pos++
+	}
+
+	copy(code[l:], e.c.p.code[maxPreambleLen:])
+	e.c.p.code = code
+	for i := range e.c.p.srcMap {
+		e.c.p.srcMap[i].pc += l - maxPreambleLen
 	}
 
 	strict := e.c.scope.strict
@@ -924,7 +1036,7 @@ func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
 	e.c.emit(&newFunc{prg: p, length: uint32(length), name: name, srcStart: uint32(e.expr.Idx0() - 1), srcEnd: uint32(e.expr.Idx1() - 1), strict: strict})
 	if !putOnStack {
 		e.c.emit(pop)
-	}
+	} */
 }
 
 func (c *compiler) compileFunctionLiteral(v *ast.FunctionLiteral, isExpr bool) compiledExpr {
@@ -948,12 +1060,15 @@ func nearestNonLexical(s *scope) *scope {
 func (e *compiledThisExpr) emitGetter(putOnStack bool) {
 	if putOnStack {
 		e.addSrcMap()
-		if e.c.scope.eval || e.c.scope.isFunction() {
+		e.c.emit(&getScopedValue{
+			name: unistring.String("this"),
+		})
+		/* if e.c.scope.eval || e.c.scope.isFunction() {
 			nearestNonLexical(e.c.scope).thisNeeded = true
 			e.c.emit(loadStack(0))
 		} else {
 			e.c.emit(loadGlobalObject)
-		}
+		} */
 	}
 }
 
@@ -1603,9 +1718,9 @@ func (c *compiler) compileCallExpression(v *ast.CallExpression) compiledExpr {
 }
 
 func (c *compiler) compileIdentifierExpression(v *ast.Identifier) compiledExpr {
-	if c.scope.strict {
+	/* if c.scope.strict {
 		c.checkIdentifierName(v.Name, int(v.Idx)-1)
-	}
+	} */
 
 	r := &compiledIdentifierExpr{
 		name: v.Name,

@@ -736,9 +736,17 @@ func (c *compiler) compileGenericLabeledStatement(v ast.Statement, needResult bo
 }
 
 func (c *compiler) compileBlockStatement(v *ast.BlockStatement, needResult bool) {
-	c.emit(enterBlock)
+	if c.currentBlock != blockFunction {
+		c.emit(enterBlock)
+		defer func() {
+			c.emit(leaveBlock)
+		}()
+	} else {
+		c.currentBlock = -1
+	}
+
 	c.compileStatements(v.List, needResult)
-	c.emit(leaveBlock)
+
 }
 
 func (c *compiler) compileExpressionStatement(v *ast.ExpressionStatement, needResult bool) {

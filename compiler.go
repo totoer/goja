@@ -17,6 +17,7 @@ const (
 	blockBranch
 	blockSwitch
 	blockWith
+	blockFunction
 )
 
 type CompilerError struct {
@@ -52,6 +53,8 @@ type compiler struct {
 	scope      *scope
 	block      *block
 	blockStart int
+
+	currentBlock int
 
 	enumGetExpr compiledEnumGetExpr
 
@@ -352,7 +355,7 @@ func (c *compiler) convertInstrToStashless(instr uint32, args int) (newIdx int, 
 	return
 }
 
-func (c *compiler) convertFunctionToStashless(code []instruction, args int) {
+/* func (c *compiler) convertFunctionToStashless(code []instruction, args int) {
 	code[0] = enterFuncStashless{stackSize: uint32(len(c.scope.names) - args), args: uint32(args)}
 	for pc := 1; pc < len(code); pc++ {
 		instr := code[pc]
@@ -392,7 +395,7 @@ func (c *compiler) convertFunctionToStashless(code []instruction, args int) {
 			code[pc] = instr
 		}
 	}
-}
+} */
 
 func (c *compiler) compileFunctionDecl(v *ast.FunctionDeclaration) {
 	idx, ok := c.scope.bindName(v.Function.Name.Name)

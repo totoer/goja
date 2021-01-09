@@ -3,23 +3,32 @@ package parser
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/dop251/goja/ast"
-	"github.com/dop251/goja/file"
-	"github.com/dop251/goja/token"
-	"github.com/go-sourcemap/sourcemap"
+	"runtime/debug"
+
 	"io/ioutil"
 	"net/url"
 	"path"
 	"strings"
+
+	"github.com/dop251/goja/ast"
+	"github.com/dop251/goja/file"
+	"github.com/dop251/goja/token"
+	"github.com/go-sourcemap/sourcemap"
 )
 
 func (self *_parser) parseBlockStatement() *ast.BlockStatement {
+	inFunction := self.scope.inFunction
 	self.openScope()
+	self.scope.inFunction = inFunction
+	defer func() {
+		self.scope.inFunction = inFunction
+		self.closeScope()
+	}()
+
 	node := &ast.BlockStatement{}
 	node.LeftBrace = self.expect(token.LEFT_BRACE)
 	node.List = self.parseStatementList()
 	node.RightBrace = self.expect(token.RIGHT_BRACE)
-	self.closeScope()
 
 	return node
 }
@@ -243,6 +252,7 @@ func (self *_parser) parseReturnStatement() ast.Statement {
 	idx := self.expect(token.RETURN)
 
 	if !self.scope.inFunction {
+		debug.PrintStack()
 		self.error(idx, "Illegal return statement")
 		self.nextStatement()
 		return &ast.BadStatement{From: idx, To: self.idx}

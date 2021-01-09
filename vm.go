@@ -53,32 +53,61 @@ func (s *runtimeScope) declare(name unistring.String, typeOfScope runtimeScopeTy
 	if typeOfScope == s.typeOfScope || (s.typeOfScope == functionScope && typeOfScope == blockScope) {
 		s.values[name] = _undefined
 	} else {
-		for currentRuntimeScope := s; s != nil; currentRuntimeScope = s.outer {
-			if currentRuntimeScope.typeOfScope == functionScope {
-				currentRuntimeScope.values[name] = _undefined
+		for buffer := s; buffer != nil; buffer = buffer.outer {
+			if buffer.typeOfScope == functionScope {
+				buffer.values[name] = _undefined
 				break
 			}
 		}
 	}
+
+	s.printScope()
+}
+
+func (s *runtimeScope) existsValue(name unistring.String, typeOfScope runtimeScopeType) bool {
+	if typeOfScope == s.typeOfScope || (s.typeOfScope == functionScope && typeOfScope == blockScope) {
+		_, ok := s.values[name]
+		return ok
+	} else {
+		for buffer := s; buffer != nil; buffer = buffer.outer {
+			if buffer.typeOfScope == functionScope {
+				_, ok := s.values[name]
+				return ok
+			}
+		}
+	}
+
+	return false
 }
 
 func (s *runtimeScope) setValue(name unistring.String, value Value) {
-	for currentRuntimeScope := s; s != nil; s = currentRuntimeScope.outer {
-		if _, ok := s.values[name]; ok {
-			s.values[name] = value
+	for buffer := s; buffer != nil; buffer = buffer.outer {
+		if _, ok := buffer.values[name]; ok {
+			buffer.values[name] = value
 			break
 		}
 	}
+	s.printScope()
 }
 
-func (s *runtimeScope) getValue(name unistring.String) Value {
-	for currentRuntimeScope := s; s != nil; s = currentRuntimeScope.outer {
-		if value, ok := s.values[name]; ok {
-			return value
+func (s *runtimeScope) getValue(name unistring.String) (Value, bool) {
+	for buffer := s; buffer != nil; buffer = buffer.outer {
+		if value, ok := buffer.values[name]; ok {
+			return value, true
 		}
 	}
 
-	return _undefined
+	return _undefined, false
+}
+
+func (s *runtimeScope) printScope() {
+	fmt.Println("Scope:")
+	for buffer := s; buffer != nil; buffer = buffer.outer {
+		fmt.Println("Scope type: ", buffer.typeOfScope)
+		for name, value := range buffer.values {
+			fmt.Println("\t ", name, " -> ", value.String())
+		}
+	}
 }
 
 // End New Code
@@ -478,9 +507,6 @@ func (vm *vm) runTry() (ex *Exception) {
 }
 
 func (vm *vm) push(v Value) {
-	/* vm.stack.expand(vm.sp)
-	vm.stack[vm.sp] = v
-	vm.sp++ */
 	vm.stack = append(vm.stack, v)
 }
 
@@ -491,13 +517,13 @@ func (vm *vm) pop() Value {
 		vm.stack = vm.stack[:n]
 		return value
 	}
-	return nil
-	/* vm.sp--
-	return vm.stack[vm.sp] */
+
+	return _undefined
 }
 
 func (vm *vm) peek() Value {
-	return vm.stack[vm.sp-1]
+	n := len(vm.stack) - 1
+	return vm.stack[n]
 }
 
 func (vm *vm) saveCtx(ctx *context) {
@@ -639,7 +665,7 @@ func (_loadCallee) exec(vm *vm) {
 	vm.pc++
 }
 
-func (vm *vm) storeStack(s int) {
+/* func (vm *vm) storeStack(s int) {
 	// l < 0 -- arg<-l-1>
 	// l > 0 -- var<l-1>
 	// l == 0 -- this
@@ -665,7 +691,7 @@ type storeStackP int
 func (s storeStackP) exec(vm *vm) {
 	vm.storeStack(int(s))
 	vm.sp--
-}
+} */
 
 type _toNumber struct{}
 
@@ -681,8 +707,8 @@ type _add struct{}
 var add _add
 
 func (_add) exec(vm *vm) {
-	right := vm.stack[vm.sp-1]
-	left := vm.stack[vm.sp-2]
+	right := vm.pop()
+	left := vm.pop()
 
 	if o, ok := left.(*Object); ok {
 		left = o.toPrimitive()
@@ -717,7 +743,7 @@ func (_add) exec(vm *vm) {
 		}
 	}
 
-	vm.stack[vm.sp-2] = ret
+	vm.push(ret)
 	vm.sp--
 	vm.pc++
 }
@@ -1133,6 +1159,8 @@ func (p setProp) exec(vm *vm) {
 
 	obj.ToObject(vm.r).self.setOwnStr(unistring.String(p), value, false)
 
+	vm.push(obj)
+
 	vm.pc++
 
 	/* vm.stack[vm.sp-2].ToObject(vm.r).self.setOwnStr(unistring.String(p), value, false)
@@ -1157,9 +1185,13 @@ func (p setPropStrict) exec(vm *vm) {
 type setProp1 unistring.String
 
 func (p setProp1) exec(vm *vm) {
-	vm.r.toObject(vm.stack[vm.sp-2]).self._putProp(unistring.String(p), vm.stack[vm.sp-1], true, true, true)
+	value := vm.pop()
+	obj := vm.pop()
 
-	vm.sp--
+	vm.r.toObject(obj).self._putProp(unistring.String(p), value, true, true, true)
+
+	vm.push(obj)
+
 	vm.pc++
 }
 
@@ -1238,17 +1270,19 @@ func (g getProp) exec(vm *vm) {
 type getPropCallee unistring.String
 
 func (g getPropCallee) exec(vm *vm) {
-	v := vm.stack[vm.sp-1]
-	obj := v.baseObject(vm.r)
+	// v := vm.stack[vm.sp-1]
+	value := vm.pop()
+	obj := value.baseObject(vm.r)
 	n := unistring.String(g)
 	if obj == nil {
 		panic(vm.r.NewTypeError("Cannot read property '%s' of undefined or null", n))
 	}
-	prop := obj.self.getStr(n, v)
+	prop := obj.self.getStr(n, value)
 	if prop == nil {
 		prop = memberUnresolved{valueUnresolved{r: vm.r, ref: n}}
 	}
-	vm.stack[vm.sp-1] = prop
+	// vm.stack[vm.sp-1] = prop
+	vm.push(prop)
 
 	vm.pc++
 }
@@ -1298,7 +1332,7 @@ type _dup struct{}
 var dup _dup
 
 func (_dup) exec(vm *vm) {
-	vm.push(vm.stack[vm.sp-1])
+	// vm.push(vm.stack[vm.sp-1])
 	vm.pc++
 }
 
@@ -1813,9 +1847,9 @@ type getScopedValue struct {
 }
 
 func (g *getScopedValue) exec(vm *vm) {
-	value := vm.runtimeScope.getValue(g.name)
+	value, ok := vm.runtimeScope.getValue(g.name)
 
-	if value == _undefined {
+	if !ok {
 		value = vm.r.globalObject.self.getStr(g.name, nil)
 		if value == nil {
 			vm.r.throwReferenceError(g.name)
@@ -1898,9 +1932,21 @@ func (numargs call) exec(vm *vm) {
 	// arg0
 	// ...
 	// arg<numargs-1>
+
+	// n := int(numargs)
+	// v := vm.stack[vm.sp-n-1] // callee
+	// obj := vm.toCallee(v)
+
 	n := int(numargs)
-	v := vm.stack[vm.sp-n-1] // callee
-	obj := vm.toCallee(v)
+	args := make([]Value, 0)
+
+	for i := 0; i < n; i++ {
+		args = append(args, vm.pop())
+	}
+
+	value := vm.pop()
+	obj := vm.toCallee(value)
+	this := vm.pop()
 repeat:
 	switch f := obj.self.(type) {
 	case *funcObject:
@@ -1910,7 +1956,11 @@ repeat:
 		vm.prg = f.prg
 		vm.stash = f.stash
 		vm.pc = 0
-		vm.stack[vm.sp-n-1], vm.stack[vm.sp-n-2] = vm.stack[vm.sp-n-2], vm.stack[vm.sp-n-1]
+		for _, arg := range args {
+			vm.push(arg)
+		}
+		vm.push(this)
+		// vm.stack[vm.sp-n-1], vm.stack[vm.sp-n-2] = vm.stack[vm.sp-n-2], vm.stack[vm.sp-n-1]
 		return
 	case *nativeFuncObject:
 		vm._nativeCall(f, n)
@@ -1965,9 +2015,28 @@ func (vm *vm) clearStack() {
 	vm.stack = vm.stack[:vm.sp]
 }
 
-type enterFunc uint32
+type _enterFunction struct{}
 
-func (e enterFunc) exec(vm *vm) {
+var enterFunction _enterFunction
+
+func (e _enterFunction) exec(vm *vm) {
+	vm.newRuntimeScope(functionScope)
+	vm.pc++
+}
+
+type _leaveFunction struct{}
+
+var leaveFunction _leaveFunction
+
+func (_leaveFunction) exec(vm *vm) {
+	if vm.runtimeScope != nil {
+		vm.runtimeScope = vm.runtimeScope.outer
+	}
+	vm.pc++
+	vm.runtimeScope.printScope()
+}
+
+/*func (e enterFunc) exec(vm *vm) {
 	// Input stack:
 	//
 	// callee
@@ -1999,7 +2068,7 @@ func (e enterFunc) exec(vm *vm) {
 	vm.sp -= vm.args
 	vm.sb = vm.sp - 1
 	vm.pc++
-}
+}*/
 
 type _ret struct{}
 
@@ -2010,8 +2079,12 @@ func (_ret) exec(vm *vm) {
 	// this -2
 	// retval -1
 
-	vm.stack[vm.sp-3] = vm.stack[vm.sp-1]
+	// vm.stack[vm.sp-3] = vm.stack[vm.sp-1]
 	vm.sp -= 2
+	if vm.runtimeScope != nil {
+		vm.runtimeScope = vm.runtimeScope.outer
+	}
+	vm.runtimeScope.printScope()
 	vm.popCtx()
 	if vm.pc < 0 {
 		vm.halt = true
@@ -2050,9 +2123,9 @@ type _retStashless struct{}
 var retStashless _retStashless
 
 func (_retStashless) exec(vm *vm) {
-	retval := vm.stack[vm.sp-1]
+	/* retval := vm.stack[vm.sp-1]
 	vm.sp = vm.sb
-	vm.stack[vm.sp-1] = retval
+	vm.stack[vm.sp-1] = retval */
 	vm.popCtx()
 	if vm.pc < 0 {
 		vm.halt = true
@@ -2597,6 +2670,7 @@ func (_leaveBlock) exec(vm *vm) {
 		vm.runtimeScope = vm.runtimeScope.outer
 	}
 	vm.pc++
+	vm.runtimeScope.printScope()
 }
 
 // End New Code

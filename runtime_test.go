@@ -1959,7 +1959,7 @@ func BenchmarkAsciiStringMapGet(b *testing.B) {
 func TestFoo(t *testing.T) {
 	const SCRIPT = `
 		var a = 1;
-		b = 2;
+		var b = 2;
 
 		function foo() {
 			var c = 3;
@@ -1972,7 +1972,7 @@ func TestFoo(t *testing.T) {
 			var d = 4;
 		}
 
-		o = {}
+		var o = {};
 		o.result = a + b + foo() + d;
 		o.result == 10;
 
@@ -1997,9 +1997,15 @@ func TestBar(t *testing.T) {
 
 func TestBaz(t *testing.T) {
 	const SCRIPT = `
-		let a = {};
-		a.test = 1;
-		a.test == 1;
+		let a = {
+			baz: 1,
+			foo: 2
+		};
+		var b = 1;
+		a.test = function(a) {
+			return a + this.baz;
+		}
+		a.test(b) == a.foo;
 	`
 
 	testScript1(SCRIPT, valueTrue, t)
