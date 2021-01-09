@@ -1005,10 +1005,10 @@ type _or struct{}
 var or _or
 
 func (_or) exec(vm *vm) {
-	left := toInt32(vm.stack[vm.sp-2])
-	right := toInt32(vm.stack[vm.sp-1])
-	vm.stack[vm.sp-2] = intToValue(int64(left | right))
-	vm.sp--
+	left := toInt32(vm.pop())
+	right := toInt32(vm.pop())
+	result := intToValue(int64(left | right))
+	vm.push(result)
 	vm.pc++
 }
 
@@ -1017,10 +1017,10 @@ type _xor struct{}
 var xor _xor
 
 func (_xor) exec(vm *vm) {
-	left := toInt32(vm.stack[vm.sp-2])
-	right := toInt32(vm.stack[vm.sp-1])
-	vm.stack[vm.sp-2] = intToValue(int64(left ^ right))
-	vm.sp--
+	left := toInt32(vm.pop())
+	right := toInt32(vm.pop())
+	result := intToValue(int64(left ^ right))
+	vm.push(result)
 	vm.pc++
 }
 
@@ -1029,8 +1029,9 @@ type _bnot struct{}
 var bnot _bnot
 
 func (_bnot) exec(vm *vm) {
-	op := toInt32(vm.stack[vm.sp-1])
-	vm.stack[vm.sp-1] = intToValue(int64(^op))
+	value := toInt32(vm.pop())
+	result := intToValue(int64(^value))
+	vm.push(result)
 	vm.pc++
 }
 
@@ -1039,10 +1040,10 @@ type _sal struct{}
 var sal _sal
 
 func (_sal) exec(vm *vm) {
-	left := toInt32(vm.stack[vm.sp-2])
-	right := toUint32(vm.stack[vm.sp-1])
-	vm.stack[vm.sp-2] = intToValue(int64(left << (right & 0x1F)))
-	vm.sp--
+	left := toInt32(vm.pop())
+	right := toInt32(vm.pop())
+	result := intToValue(int64(left << (right & 0x1F)))
+	vm.push(result)
 	vm.pc++
 }
 
@@ -1051,10 +1052,10 @@ type _sar struct{}
 var sar _sar
 
 func (_sar) exec(vm *vm) {
-	left := toInt32(vm.stack[vm.sp-2])
-	right := toUint32(vm.stack[vm.sp-1])
-	vm.stack[vm.sp-2] = intToValue(int64(left >> (right & 0x1F)))
-	vm.sp--
+	left := toInt32(vm.pop())
+	right := toInt32(vm.pop())
+	result := intToValue(int64(left >> (right & 0x1F)))
+	vm.push(result)
 	vm.pc++
 }
 
@@ -1063,10 +1064,10 @@ type _shr struct{}
 var shr _shr
 
 func (_shr) exec(vm *vm) {
-	left := toUint32(vm.stack[vm.sp-2])
-	right := toUint32(vm.stack[vm.sp-1])
-	vm.stack[vm.sp-2] = intToValue(int64(left >> (right & 0x1F)))
-	vm.sp--
+	left := toInt32(vm.pop())
+	right := toInt32(vm.pop())
+	result := intToValue(int64(left >> (right & 0x1F)))
+	vm.push(result)
 	vm.pc++
 }
 
