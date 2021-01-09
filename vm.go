@@ -993,10 +993,10 @@ type _and struct{}
 var and _and
 
 func (_and) exec(vm *vm) {
-	left := toInt32(vm.stack[vm.sp-2])
-	right := toInt32(vm.stack[vm.sp-1])
-	vm.stack[vm.sp-2] = intToValue(int64(left & right))
-	vm.sp--
+	left := toInt32(vm.pop())
+	right := toInt32(vm.pop())
+	result := intToValue(int64(left & right))
+	vm.push(result)
 	vm.pc++
 }
 
