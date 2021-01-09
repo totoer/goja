@@ -2393,12 +2393,12 @@ type _op_strict_eq struct{}
 var op_strict_eq _op_strict_eq
 
 func (_op_strict_eq) exec(vm *vm) {
-	if vm.stack[vm.sp-2].StrictEquals(vm.stack[vm.sp-1]) {
-		vm.stack[vm.sp-2] = valueTrue
+	firstValue, secondValue := vm.pop(), vm.pop()
+	if firstValue.StrictEquals(secondValue) {
+		vm.push(valueTrue)
 	} else {
-		vm.stack[vm.sp-2] = valueFalse
+		vm.push(valueFalse)
 	}
-	vm.sp--
 	vm.pc++
 }
 

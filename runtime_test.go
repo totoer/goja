@@ -1996,15 +1996,8 @@ func TestBar(t *testing.T) {
 
 func TestBaz(t *testing.T) {
 	const SCRIPT = `
-		function foo() {
-			var a = 1;
-			return a;
-		}
-
-		o = {}
-		o.result = foo() + 2;
-
-		o.result == 3;
+		var s = "Тест";
+		s[2] === "с";
 	`
 
 	testScript1(SCRIPT, valueTrue, t)
