@@ -537,6 +537,17 @@ func (vm *vm) pop() Value {
 	return _undefined
 }
 
+func (vm *vm) popSlice(m int) []Value {
+	result := make([]Value, m)
+	if len(vm.stack) >= m {
+		n := len(vm.stack)
+		copy(result, vm.stack[n-m:n])
+		vm.stack = vm.stack[:n-m]
+	}
+
+	return result
+}
+
 func (vm *vm) peek() Value {
 	n := len(vm.stack) - 1
 	return vm.stack[n]
@@ -1091,14 +1102,16 @@ type _setElem struct{}
 var setElem _setElem
 
 func (_setElem) exec(vm *vm) {
-	obj := vm.stack[vm.sp-3].ToObject(vm.r)
-	propName := toPropertyKey(vm.stack[vm.sp-2])
-	val := vm.stack[vm.sp-1]
+	value := vm.pop()
+	index := vm.pop()
+	obj := vm.pop().ToObject(vm.r)
 
-	obj.setOwn(propName, val, false)
+	propName := toPropertyKey(index)
 
-	vm.sp -= 2
-	vm.stack[vm.sp-1] = val
+	obj.setOwn(propName, value, false)
+
+	vm.push(value)
+
 	vm.pc++
 }
 
@@ -1381,17 +1394,9 @@ func (_newObject) exec(vm *vm) {
 type newArray uint32
 
 func (l newArray) exec(vm *vm) {
-	values := make([]Value, l)
-	if l > 0 {
-		copy(values, vm.stack[vm.sp-int(l):vm.sp])
-	}
+	values := vm.popSlice(int(l))
 	obj := vm.r.newArrayValues(values)
-	if l > 0 {
-		vm.sp -= int(l) - 1
-		vm.stack[vm.sp-1] = obj
-	} else {
-		vm.push(obj)
-	}
+	vm.push(obj)
 	vm.pc++
 }
 
