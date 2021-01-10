@@ -380,6 +380,8 @@ func (vm *vm) newStash() {
 
 func (vm *vm) init() {
 	vm.newRuntimeScope(functionScope)
+	vm.runtimeScope.declare(unistring.String("this"), functionScope)
+	vm.runtimeScope.setValue(unistring.String("this"), vm.r.globalObject)
 }
 
 func (vm *vm) run() {
@@ -2430,16 +2432,15 @@ type _op_instanceof struct{}
 var op_instanceof _op_instanceof
 
 func (_op_instanceof) exec(vm *vm) {
-	left := vm.stack[vm.sp-2]
-	right := vm.r.toObject(vm.stack[vm.sp-1])
+	right := vm.r.toObject(vm.pop())
+	left := vm.pop()
 
 	if instanceOfOperator(left, right) {
-		vm.stack[vm.sp-2] = valueTrue
+		vm.push(valueTrue)
 	} else {
-		vm.stack[vm.sp-2] = valueFalse
+		vm.push(valueFalse)
 	}
 
-	vm.sp--
 	vm.pc++
 }
 
