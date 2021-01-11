@@ -705,6 +705,7 @@ func (e *compiledAssignExpr) emitGetter(putOnStack bool) {
 	case token.ASSIGN:
 		e.left.emitSetter(e.right)
 	case token.PLUS:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(add)
