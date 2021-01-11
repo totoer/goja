@@ -782,8 +782,8 @@ type _sub struct{}
 var sub _sub
 
 func (_sub) exec(vm *vm) {
-	right := vm.stack[vm.sp-1]
-	left := vm.stack[vm.sp-2]
+	right := vm.pop()
+	left := vm.pop()
 
 	var result Value
 
@@ -796,8 +796,7 @@ func (_sub) exec(vm *vm) {
 
 	result = floatToValue(left.ToFloat() - right.ToFloat())
 end:
-	vm.sp--
-	vm.stack[vm.sp-1] = result
+	vm.push(result)
 	vm.pc++
 }
 
@@ -1191,7 +1190,7 @@ func (p setProp) exec(vm *vm) {
 
 	obj.ToObject(vm.r).self.setOwnStr(unistring.String(p), value, false)
 
-	vm.push(obj)
+	// vm.push(obj)
 
 	vm.pc++
 
@@ -1302,7 +1301,6 @@ func (g getProp) exec(vm *vm) {
 type getPropCallee unistring.String
 
 func (g getPropCallee) exec(vm *vm) {
-	// v := vm.stack[vm.sp-1]
 	value := vm.pop()
 	obj := value.baseObject(vm.r)
 	n := unistring.String(g)
@@ -1313,7 +1311,8 @@ func (g getPropCallee) exec(vm *vm) {
 	if prop == nil {
 		prop = memberUnresolved{valueUnresolved{r: vm.r, ref: n}}
 	}
-	// vm.stack[vm.sp-1] = prop
+
+	vm.push(value)
 	vm.push(prop)
 
 	vm.pc++
@@ -1953,6 +1952,14 @@ func (_boxThis) exec(vm *vm) {
 	vm.pc++
 }
 
+func reveseArgs(args []Value) []Value {
+	for i, j := 0, len(args)-1; i < j; i, j = i+1, j-1 {
+		args[i], args[j] = args[j], args[i]
+	}
+
+	return args
+}
+
 type call uint32
 
 func (numargs call) exec(vm *vm) {
@@ -1962,16 +1969,16 @@ func (numargs call) exec(vm *vm) {
 	// ...
 	// arg<numargs-1>
 
-	// n := int(numargs)
-	// v := vm.stack[vm.sp-n-1] // callee
-	// obj := vm.toCallee(v)
-
 	n := int(numargs)
-	args := make([]Value, 0)
+	args := make([]Value, n)
 
-	for i := 0; i < n; i++ {
-		args = append(args, vm.pop())
+	for i := n - 1; i >= 0; i-- {
+		args[i] = vm.pop()
 	}
+
+	/* for i := 0; i < n; i++ {
+		args[i] = vm.pop()
+	} */
 
 	value := vm.pop()
 	obj := vm.toCallee(value)
@@ -1985,16 +1992,19 @@ repeat:
 		vm.prg = f.prg
 		vm.stash = f.stash
 		vm.pc = 0
-		for _, arg := range args {
-			vm.push(arg)
+		for i := n - 1; i >= 0; i-- {
+			vm.push(args[i])
 		}
+		/* for _, arg := range args {
+			vm.push(arg)
+		} */
 		vm.push(this)
 		// vm.stack[vm.sp-n-1], vm.stack[vm.sp-n-2] = vm.stack[vm.sp-n-2], vm.stack[vm.sp-n-1]
 		return
 	case *nativeFuncObject:
-		vm._nativeCall(f, n)
+		vm._nativeCall(f, this, args)
 	case *boundFuncObject:
-		vm._nativeCall(&f.nativeFuncObject, n)
+		vm._nativeCall(&f.nativeFuncObject, this, args)
 	case *proxyObject:
 		vm.pushCtx()
 		vm.prg = nil
@@ -2015,24 +2025,23 @@ repeat:
 	}
 }
 
-func (vm *vm) _nativeCall(f *nativeFuncObject, n int) {
+func (vm *vm) _nativeCall(f *nativeFuncObject, this Value, args []Value) {
 	if f.f != nil {
 		vm.pushCtx()
 		vm.prg = nil
 		vm.funcName = f.nameProp.get(nil).string()
 		ret := f.f(FunctionCall{
-			Arguments: vm.stack[vm.sp-n : vm.sp],
-			This:      vm.stack[vm.sp-n-2],
+			Arguments: args,
+			This:      this,
 		})
 		if ret == nil {
 			ret = _undefined
 		}
-		vm.stack[vm.sp-n-2] = ret
+		vm.push(ret)
 		vm.popCtx()
 	} else {
-		vm.stack[vm.sp-n-2] = _undefined
+		vm.push(_undefined)
 	}
-	vm.sp -= n + 1
 	vm.pc++
 }
 
@@ -2192,8 +2201,7 @@ func (d bindName) exec(vm *vm) {
 type jne int32
 
 func (j jne) exec(vm *vm) {
-	vm.sp--
-	if !vm.stack[vm.sp].ToBoolean() {
+	if !vm.pop().ToBoolean() {
 		vm.pc += int(j)
 	} else {
 		vm.pc++
@@ -2299,16 +2307,15 @@ type _op_lt struct{}
 var op_lt _op_lt
 
 func (_op_lt) exec(vm *vm) {
-	left := toPrimitiveNumber(vm.stack[vm.sp-2])
-	right := toPrimitiveNumber(vm.stack[vm.sp-1])
+	right := toPrimitiveNumber(vm.pop())
+	left := toPrimitiveNumber(vm.pop())
 
 	r := cmp(left, right)
 	if r == _undefined {
-		vm.stack[vm.sp-2] = valueFalse
+		vm.push(valueFalse)
 	} else {
-		vm.stack[vm.sp-2] = r
+		vm.push(r)
 	}
-	vm.sp--
 	vm.pc++
 }
 
@@ -2317,17 +2324,16 @@ type _op_lte struct{}
 var op_lte _op_lte
 
 func (_op_lte) exec(vm *vm) {
-	left := toPrimitiveNumber(vm.stack[vm.sp-2])
-	right := toPrimitiveNumber(vm.stack[vm.sp-1])
+	right := toPrimitiveNumber(vm.pop())
+	left := toPrimitiveNumber(vm.pop())
 
 	r := cmp(right, left)
 	if r == _undefined || r == valueTrue {
-		vm.stack[vm.sp-2] = valueFalse
+		vm.push(valueFalse)
 	} else {
-		vm.stack[vm.sp-2] = valueTrue
+		vm.push(valueTrue)
 	}
 
-	vm.sp--
 	vm.pc++
 }
 
@@ -2336,16 +2342,15 @@ type _op_gt struct{}
 var op_gt _op_gt
 
 func (_op_gt) exec(vm *vm) {
-	left := toPrimitiveNumber(vm.stack[vm.sp-2])
-	right := toPrimitiveNumber(vm.stack[vm.sp-1])
+	left := toPrimitiveNumber(vm.pop())
+	right := toPrimitiveNumber(vm.pop())
 
-	r := cmp(right, left)
+	r := cmp(left, right)
 	if r == _undefined {
-		vm.stack[vm.sp-2] = valueFalse
+		vm.push(valueFalse)
 	} else {
-		vm.stack[vm.sp-2] = r
+		vm.push(r)
 	}
-	vm.sp--
 	vm.pc++
 }
 
@@ -2354,17 +2359,16 @@ type _op_gte struct{}
 var op_gte _op_gte
 
 func (_op_gte) exec(vm *vm) {
-	left := toPrimitiveNumber(vm.stack[vm.sp-2])
-	right := toPrimitiveNumber(vm.stack[vm.sp-1])
+	left := toPrimitiveNumber(vm.pop())
+	right := toPrimitiveNumber(vm.pop())
 
 	r := cmp(left, right)
-	if r == _undefined || r == valueTrue {
-		vm.stack[vm.sp-2] = valueFalse
+	if r == _undefined || r != valueTrue {
+		vm.push(valueFalse)
 	} else {
-		vm.stack[vm.sp-2] = valueTrue
+		vm.push(valueTrue)
 	}
 
-	vm.sp--
 	vm.pc++
 }
 
@@ -2373,10 +2377,10 @@ type _op_eq struct{}
 var op_eq _op_eq
 
 func (_op_eq) exec(vm *vm) {
-	firstValue := vm.pop()
-	secondValue := vm.pop()
+	left := vm.pop()
+	right := vm.pop()
 
-	if firstValue.Equals(secondValue) {
+	if left.Equals(right) {
 		vm.push(valueTrue)
 	} else {
 		vm.push(valueFalse)
@@ -2390,12 +2394,16 @@ type _op_neq struct{}
 var op_neq _op_neq
 
 func (_op_neq) exec(vm *vm) {
-	if vm.stack[vm.sp-2].Equals(vm.stack[vm.sp-1]) {
-		vm.stack[vm.sp-2] = valueFalse
+	left := vm.pop()
+	right := vm.pop()
+
+	if !left.Equals(right) {
+		vm.push(valueTrue)
 	} else {
-		vm.stack[vm.sp-2] = valueTrue
+		vm.push(valueFalse)
 	}
-	vm.sp--
+
+	vm.pc++
 	vm.pc++
 }
 
@@ -2404,8 +2412,9 @@ type _op_strict_eq struct{}
 var op_strict_eq _op_strict_eq
 
 func (_op_strict_eq) exec(vm *vm) {
-	firstValue, secondValue := vm.pop(), vm.pop()
-	if firstValue.StrictEquals(secondValue) {
+	left, right := vm.pop(), vm.pop()
+
+	if left.StrictEquals(right) {
 		vm.push(valueTrue)
 	} else {
 		vm.push(valueFalse)
@@ -2418,12 +2427,13 @@ type _op_strict_neq struct{}
 var op_strict_neq _op_strict_neq
 
 func (_op_strict_neq) exec(vm *vm) {
-	if vm.stack[vm.sp-2].StrictEquals(vm.stack[vm.sp-1]) {
-		vm.stack[vm.sp-2] = valueFalse
+	left, right := vm.pop(), vm.pop()
+
+	if !left.StrictEquals(right) {
+		vm.push(valueTrue)
 	} else {
-		vm.stack[vm.sp-2] = valueTrue
+		vm.push(valueFalse)
 	}
-	vm.sp--
 	vm.pc++
 }
 
