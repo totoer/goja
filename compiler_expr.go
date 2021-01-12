@@ -681,7 +681,7 @@ func (e *deleteVarExpr) emitGetter(putOnStack bool) {
 		e.c.throwSyntaxError(e.offset, "Delete of an unqualified identifier in strict mode")
 		return
 	}*/
-	e.c.emit(deleteVar(e.name))
+	// e.c.emit(deleteVar(e.name))
 	if !putOnStack {
 		e.c.emit(pop)
 	}
@@ -693,7 +693,7 @@ func (e *deleteGlobalExpr) emitGetter(putOnStack bool) {
 		return
 	}*/
 
-	e.c.emit(deleteGlobal(e.name))
+	// e.c.emit(deleteGlobal(e.name))
 	if !putOnStack {
 		e.c.emit(pop)
 	}
@@ -712,60 +712,70 @@ func (e *compiledAssignExpr) emitGetter(putOnStack bool) {
 		}, false, putOnStack)
 		return
 	case token.MINUS:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(sub)
 		}, false, putOnStack)
 		return
 	case token.MULTIPLY:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(mul)
 		}, false, putOnStack)
 		return
 	case token.SLASH:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(div)
 		}, false, putOnStack)
 		return
 	case token.REMAINDER:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(mod)
 		}, false, putOnStack)
 		return
 	case token.OR:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(or)
 		}, false, putOnStack)
 		return
 	case token.AND:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(and)
 		}, false, putOnStack)
 		return
 	case token.EXCLUSIVE_OR:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(xor)
 		}, false, putOnStack)
 		return
 	case token.SHIFT_LEFT:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(sal)
 		}, false, putOnStack)
 		return
 	case token.SHIFT_RIGHT:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(sar)
 		}, false, putOnStack)
 		return
 	case token.UNSIGNED_SHIFT_RIGHT:
+		e.left.emitGetter(false)
 		e.left.emitUnary(nil, func() {
 			e.right.emitGetter(true)
 			e.c.emit(shr)
@@ -1156,7 +1166,8 @@ func (c *compiler) emitThrow(v Value) {
 		t := nilSafe(o.self.getStr("name", nil)).toString().String()
 		switch t {
 		case "TypeError":
-			c.emit(getVar1(t))
+			// c.emit(getVar1(t))
+			c.emit(&getScopedValue{name: unistring.String(t)})
 			msg := o.self.getStr("message", nil)
 			if msg != nil {
 				c.emit(loadVal(c.p.defineLiteralValue(msg)))

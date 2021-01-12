@@ -2,7 +2,6 @@ package goja
 
 import (
 	"fmt"
-	"strconv"
 
 	"github.com/dop251/goja/ast"
 	"github.com/dop251/goja/file"
@@ -116,41 +115,41 @@ func (c *compiler) compileTryStatement(v *ast.TryStatement) {
 		if !dyn && !dyn1 && !accessed1 {
 			c.scope.accessed = accessed
 			dynamicCatch = false
-			code := c.p.code[start+1:]
-			m := make(map[uint32]uint32)
-			remap := func(instr uint32) uint32 {
-				level := instr >> 24
-				idx := instr & 0x00FFFFFF
-				if level > 0 {
-					level--
-					return (level << 24) | idx
-				} else {
-					// remap
-					newIdx, exists := m[idx]
-					if !exists {
-						exname := unistring.String(" __tmp" + strconv.Itoa(c.scope.lastFreeTmp))
-						c.scope.lastFreeTmp++
-						newIdx, _ = c.scope.bindName(exname)
-						m[idx] = newIdx
-					}
-					return newIdx
-				}
-			}
-			for pc, instr := range code {
-				switch instr := instr.(type) {
-				case getLocal:
-					code[pc] = getLocal(remap(uint32(instr)))
-				case setLocal:
-					code[pc] = setLocal(remap(uint32(instr)))
-				case setLocalP:
-					code[pc] = setLocalP(remap(uint32(instr)))
-				}
-			}
+			// code := c.p.code[start+1:]
+			// m := make(map[uint32]uint32)
+			// remap := func(instr uint32) uint32 {
+			// 	level := instr >> 24
+			// 	idx := instr & 0x00FFFFFF
+			// 	if level > 0 {
+			// 		level--
+			// 		return (level << 24) | idx
+			// 	} else {
+			// 		// remap
+			// 		newIdx, exists := m[idx]
+			// 		if !exists {
+			// 			exname := unistring.String(" __tmp" + strconv.Itoa(c.scope.lastFreeTmp))
+			// 			c.scope.lastFreeTmp++
+			// 			newIdx, _ = c.scope.bindName(exname)
+			// 			m[idx] = newIdx
+			// 		}
+			// 		return newIdx
+			// 	}
+			// }
+			// for pc, instr := range code {
+			// 	switch instr := instr.(type) {
+			// 	case getLocal:
+			// 		code[pc] = getLocal(remap(uint32(instr)))
+			// 	case setLocal:
+			// 		code[pc] = setLocal(remap(uint32(instr)))
+			// 	case setLocalP:
+			// 		code[pc] = setLocalP(remap(uint32(instr)))
+			// 	}
+			// }
 			c.p.code[start+1] = pop
-			if catchVarIdx, exists := m[0]; exists {
-				c.p.code[start] = setLocal(catchVarIdx)
-				catchOffset--
-			}
+			// if catchVarIdx, exists := m[0]; exists {
+			// 	c.p.code[start] = setLocal(catchVarIdx)
+			// 	catchOffset--
+			// }
 		} else {
 			c.scope.accessed = true
 		}

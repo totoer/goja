@@ -663,7 +663,7 @@ func (_loadGlobalObject) exec(vm *vm) {
 	vm.pc++
 }
 
-type loadStack int
+/* type loadStack int
 
 func (l loadStack) exec(vm *vm) {
 	// l < 0 -- arg<-l-1>
@@ -683,16 +683,16 @@ func (l loadStack) exec(vm *vm) {
 		vm.push(vm.stack[vm.sb])
 	}
 	vm.pc++
-}
+} */
 
-type _loadCallee struct{}
+/* type _loadCallee struct{}
 
 var loadCallee _loadCallee
 
 func (_loadCallee) exec(vm *vm) {
 	vm.push(vm.stack[vm.sb-1])
 	vm.pc++
-}
+} */
 
 /* func (vm *vm) storeStack(s int) {
 	// l < 0 -- arg<-l-1>
@@ -727,7 +727,8 @@ type _toNumber struct{}
 var toNumber _toNumber
 
 func (_toNumber) exec(vm *vm) {
-	vm.stack[vm.sp-1] = vm.stack[vm.sp-1].ToNumber()
+	value := vm.pop().ToNumber()
+	vm.push(value)
 	vm.pc++
 }
 
@@ -805,8 +806,8 @@ type _mul struct{}
 var mul _mul
 
 func (_mul) exec(vm *vm) {
-	left := vm.stack[vm.sp-2]
-	right := vm.stack[vm.sp-1]
+	left := vm.pop()
+	right := vm.pop()
 
 	var result Value
 
@@ -829,8 +830,7 @@ func (_mul) exec(vm *vm) {
 	result = floatToValue(left.ToFloat() * right.ToFloat())
 
 end:
-	vm.sp--
-	vm.stack[vm.sp-1] = result
+	vm.push(result)
 	vm.pc++
 }
 
@@ -839,8 +839,8 @@ type _div struct{}
 var div _div
 
 func (_div) exec(vm *vm) {
-	left := vm.stack[vm.sp-2].ToFloat()
-	right := vm.stack[vm.sp-1].ToFloat()
+	left := vm.pop().ToFloat()
+	right := vm.pop().ToFloat()
 
 	var result Value
 
@@ -888,8 +888,7 @@ func (_div) exec(vm *vm) {
 	result = floatToValue(left / right)
 
 end:
-	vm.sp--
-	vm.stack[vm.sp-1] = result
+	vm.push(result)
 	vm.pc++
 }
 
@@ -898,8 +897,8 @@ type _mod struct{}
 var mod _mod
 
 func (_mod) exec(vm *vm) {
-	left := vm.stack[vm.sp-2]
-	right := vm.stack[vm.sp-1]
+	left := vm.pop()
+	right := vm.pop()
 
 	var result Value
 
@@ -921,8 +920,7 @@ func (_mod) exec(vm *vm) {
 
 	result = floatToValue(math.Mod(left.ToFloat(), right.ToFloat()))
 end:
-	vm.sp--
-	vm.stack[vm.sp-1] = result
+	vm.push(result)
 	vm.pc++
 }
 
@@ -931,7 +929,7 @@ type _neg struct{}
 var neg _neg
 
 func (_neg) exec(vm *vm) {
-	operand := vm.stack[vm.sp-1]
+	operand := vm.pop()
 
 	var result Value
 
@@ -949,7 +947,7 @@ func (_neg) exec(vm *vm) {
 		result = valueFloat(f)
 	}
 
-	vm.stack[vm.sp-1] = result
+	vm.push(result)
 	vm.pc++
 }
 
@@ -958,7 +956,8 @@ type _plus struct{}
 var plus _plus
 
 func (_plus) exec(vm *vm) {
-	vm.stack[vm.sp-1] = vm.stack[vm.sp-1].ToNumber()
+	value := vm.pop().ToNumber()
+	vm.push(value)
 	vm.pc++
 }
 
@@ -1121,14 +1120,13 @@ type _setElemStrict struct{}
 var setElemStrict _setElemStrict
 
 func (_setElemStrict) exec(vm *vm) {
-	obj := vm.r.toObject(vm.stack[vm.sp-3])
-	propName := toPropertyKey(vm.stack[vm.sp-2])
-	val := vm.stack[vm.sp-1]
+	value := vm.pop()
+	propName := toPropertyKey(vm.pop())
+	obj := vm.r.toObject(vm.pop())
 
-	obj.setOwn(propName, val, true)
+	obj.setOwn(propName, value, true)
 
-	vm.sp -= 2
-	vm.stack[vm.sp-1] = val
+	vm.push(value)
 	vm.pc++
 }
 
@@ -1137,14 +1135,14 @@ type _deleteElem struct{}
 var deleteElem _deleteElem
 
 func (_deleteElem) exec(vm *vm) {
-	obj := vm.r.toObject(vm.stack[vm.sp-2])
-	propName := toPropertyKey(vm.stack[vm.sp-1])
+	propName := toPropertyKey(vm.pop())
+	obj := vm.r.toObject(vm.pop())
+
 	if obj.delete(propName, false) {
-		vm.stack[vm.sp-2] = valueTrue
+		vm.push(valueTrue)
 	} else {
-		vm.stack[vm.sp-2] = valueFalse
+		vm.push(valueFalse)
 	}
-	vm.sp--
 	vm.pc++
 }
 
@@ -1153,22 +1151,22 @@ type _deleteElemStrict struct{}
 var deleteElemStrict _deleteElemStrict
 
 func (_deleteElemStrict) exec(vm *vm) {
-	obj := vm.r.toObject(vm.stack[vm.sp-2])
-	propName := toPropertyKey(vm.stack[vm.sp-1])
+	propName := toPropertyKey(vm.pop())
+	obj := vm.r.toObject(vm.pop())
+
 	obj.delete(propName, true)
-	vm.stack[vm.sp-2] = valueTrue
-	vm.sp--
+	vm.push(valueTrue)
 	vm.pc++
 }
 
 type deleteProp unistring.String
 
 func (d deleteProp) exec(vm *vm) {
-	obj := vm.r.toObject(vm.stack[vm.sp-1])
+	obj := vm.r.toObject(vm.pop())
 	if obj.self.deleteStr(unistring.String(d), false) {
-		vm.stack[vm.sp-1] = valueTrue
+		vm.push(valueTrue)
 	} else {
-		vm.stack[vm.sp-1] = valueFalse
+		vm.push(valueFalse)
 	}
 	vm.pc++
 }
@@ -1176,9 +1174,9 @@ func (d deleteProp) exec(vm *vm) {
 type deletePropStrict unistring.String
 
 func (d deletePropStrict) exec(vm *vm) {
-	obj := vm.r.toObject(vm.stack[vm.sp-1])
+	obj := vm.r.toObject(vm.pop())
 	obj.self.deleteStr(unistring.String(d), true)
-	vm.stack[vm.sp-1] = valueTrue
+	vm.push(valueTrue)
 	vm.pc++
 }
 
@@ -1203,13 +1201,12 @@ func (p setProp) exec(vm *vm) {
 type setPropStrict unistring.String
 
 func (p setPropStrict) exec(vm *vm) {
-	obj := vm.stack[vm.sp-2]
-	val := vm.stack[vm.sp-1]
+	value := vm.pop()
+	obj := vm.pop()
 
 	obj1 := vm.r.toObject(obj)
-	obj1.self.setOwnStr(unistring.String(p), val, true)
-	vm.stack[vm.sp-2] = val
-	vm.sp--
+	obj1.self.setOwnStr(unistring.String(p), value, true)
+	vm.push(value)
 	vm.pc++
 }
 
@@ -1231,45 +1228,45 @@ type _setProto struct{}
 var setProto _setProto
 
 func (_setProto) exec(vm *vm) {
-	vm.r.toObject(vm.stack[vm.sp-2]).self.setProto(vm.r.toProto(vm.stack[vm.sp-1]), true)
+	first := vm.pop()
+	second := vm.pop()
 
-	vm.sp--
+	vm.r.toObject(second).self.setProto(vm.r.toProto(first), true)
+
 	vm.pc++
 }
 
 type setPropGetter unistring.String
 
 func (s setPropGetter) exec(vm *vm) {
-	obj := vm.r.toObject(vm.stack[vm.sp-2])
-	val := vm.stack[vm.sp-1]
+	value := vm.pop()
+	obj := vm.r.toObject(vm.pop())
 
 	descr := PropertyDescriptor{
-		Getter:       val,
+		Getter:       value,
 		Configurable: FLAG_TRUE,
 		Enumerable:   FLAG_TRUE,
 	}
 
 	obj.self.defineOwnPropertyStr(unistring.String(s), descr, false)
 
-	vm.sp--
 	vm.pc++
 }
 
 type setPropSetter unistring.String
 
 func (s setPropSetter) exec(vm *vm) {
-	obj := vm.r.toObject(vm.stack[vm.sp-2])
-	val := vm.stack[vm.sp-1]
+	value := vm.pop()
+	obj := vm.r.toObject(vm.pop())
 
 	descr := PropertyDescriptor{
-		Setter:       val,
+		Setter:       value,
 		Configurable: FLAG_TRUE,
 		Enumerable:   FLAG_TRUE,
 	}
 
 	obj.self.defineOwnPropertyStr(unistring.String(s), descr, false)
 
-	vm.sp--
 	vm.pc++
 }
 
@@ -1343,20 +1340,22 @@ type _getElemCallee struct{}
 var getElemCallee _getElemCallee
 
 func (_getElemCallee) exec(vm *vm) {
-	v := vm.stack[vm.sp-2]
-	obj := v.baseObject(vm.r)
-	propName := toPropertyKey(vm.stack[vm.sp-1])
+	key := vm.pop()
+	value := vm.pop()
+
+	obj := value.baseObject(vm.r)
+	propName := toPropertyKey(key)
+
 	if obj == nil {
 		panic(vm.r.NewTypeError("Cannot read property '%s' of undefined", propName.String()))
 	}
 
-	prop := obj.get(propName, v)
+	prop := obj.get(propName, value)
 	if prop == nil {
 		prop = memberUnresolved{valueUnresolved{r: vm.r, ref: propName.string()}}
 	}
-	vm.stack[vm.sp-2] = prop
+	vm.push(prop)
 
-	vm.sp--
 	vm.pc++
 }
 
@@ -1372,14 +1371,14 @@ func (_dup) exec(vm *vm) {
 type dupN uint32
 
 func (d dupN) exec(vm *vm) {
-	vm.push(vm.stack[vm.sp-1-int(d)])
+	// vm.push(vm.stack[vm.sp-1-int(d)])
 	vm.pc++
 }
 
 type rdupN uint32
 
 func (d rdupN) exec(vm *vm) {
-	vm.stack[vm.sp-1-int(d)] = vm.stack[vm.sp-1]
+	// vm.stack[vm.sp-1-int(d)] = vm.stack[vm.sp-1]
 	vm.pc++
 }
 
@@ -1406,13 +1405,11 @@ type newArraySparse struct {
 }
 
 func (n *newArraySparse) exec(vm *vm) {
-	values := make([]Value, n.l)
-	copy(values, vm.stack[vm.sp-int(n.l):vm.sp])
+	values := vm.popSlice(int(n.l))
 	arr := vm.r.newArrayObject()
 	setArrayValues(arr, values)
 	arr.objCount = n.objCount
-	vm.sp -= int(n.l) - 1
-	vm.stack[vm.sp-1] = arr.val
+	vm.push(arr.val)
 	vm.pc++
 }
 
@@ -1426,7 +1423,7 @@ func (n *newRegexp) exec(vm *vm) {
 	vm.pc++
 }
 
-func (vm *vm) setLocal(s int) {
+/* func (vm *vm) setLocal(s int) {
 	v := vm.stack[vm.sp-1]
 	level := s >> 24
 	idx := uint32(s & 0x00FFFFFF)
@@ -1728,15 +1725,16 @@ func (r resolveVar) exec(vm *vm) {
 			v: &stash.values[idx],
 		}
 		goto end
-	} /*else {
-		if vm.r.globalObject.self.hasProperty(nameVal) {
-			ref = &objRef{
-				base: vm.r.globalObject.self,
-				name: r.name,
-			}
-			goto end
-		}
-	} */
+	}
+	// else {
+	// 	if vm.r.globalObject.self.hasProperty(nameVal) {
+	// 		ref = &objRef{
+	// 			base: vm.r.globalObject.self,
+	// 			name: r.name,
+	// 		}
+	// 		goto end
+	// 	}
+	// }
 
 	ref = &unresolvedRef{
 		runtime: vm.r,
@@ -1844,7 +1842,7 @@ func (n getVar1Callee) exec(vm *vm) {
 	}
 	vm.push(val)
 	vm.pc++
-}
+} */
 
 // New Code
 type declare struct {
@@ -1938,7 +1936,7 @@ func (numargs callEvalStrict) exec(vm *vm) {
 	vm.callEval(int(numargs), true)
 }
 
-type _boxThis struct{}
+/* type _boxThis struct{}
 
 var boxThis _boxThis
 
@@ -1950,7 +1948,7 @@ func (_boxThis) exec(vm *vm) {
 		vm.stack[vm.sb] = v.ToObject(vm.r)
 	}
 	vm.pc++
-}
+} */
 
 func reveseArgs(args []Value) []Value {
 	for i, j := 0, len(args)-1; i < j; i, j = i+1, j-1 {
@@ -1995,11 +1993,7 @@ repeat:
 		for i := n - 1; i >= 0; i-- {
 			vm.push(args[i])
 		}
-		/* for _, arg := range args {
-			vm.push(arg)
-		} */
 		vm.push(this)
-		// vm.stack[vm.sp-n-1], vm.stack[vm.sp-n-2] = vm.stack[vm.sp-n-2], vm.stack[vm.sp-n-1]
 		return
 	case *nativeFuncObject:
 		vm._nativeCall(f, this, args)
@@ -2046,11 +2040,7 @@ func (vm *vm) _nativeCall(f *nativeFuncObject, this Value, args []Value) {
 }
 
 func (vm *vm) clearStack() {
-	stackTail := vm.stack[vm.sp:]
-	for i := range stackTail {
-		stackTail[i] = nil
-	}
-	vm.stack = vm.stack[:vm.sp]
+	vm.stack = vm.stack[:0]
 }
 
 type _enterFunction struct{}
@@ -2116,7 +2106,6 @@ func (_ret) exec(vm *vm) {
 	// this -2
 	// retval -1
 
-	// vm.stack[vm.sp-3] = vm.stack[vm.sp-1]
 	vm.sp -= 2
 	if vm.runtimeScope != nil {
 		vm.runtimeScope = vm.runtimeScope.outer
@@ -2127,7 +2116,7 @@ func (_ret) exec(vm *vm) {
 	}
 }
 
-type enterFuncStashless struct {
+/* type enterFuncStashless struct {
 	stackSize uint32
 	args      uint32
 }
@@ -2159,14 +2148,14 @@ type _retStashless struct{}
 var retStashless _retStashless
 
 func (_retStashless) exec(vm *vm) {
-	/* retval := vm.stack[vm.sp-1]
-	vm.sp = vm.sb
-	vm.stack[vm.sp-1] = retval */
+	// retval := vm.stack[vm.sp-1]
+	// vm.sp = vm.sb
+	// vm.stack[vm.sp-1] = retval
 	vm.popCtx()
 	if vm.pc < 0 {
 		vm.halt = true
 	}
-}
+} */
 
 type newFunc struct {
 	prg    *Program
@@ -2211,8 +2200,7 @@ func (j jne) exec(vm *vm) {
 type jeq int32
 
 func (j jeq) exec(vm *vm) {
-	vm.sp--
-	if vm.stack[vm.sp].ToBoolean() {
+	if vm.pop().ToBoolean() {
 		vm.pc += int(j)
 	} else {
 		vm.pc++
@@ -2222,7 +2210,7 @@ func (j jeq) exec(vm *vm) {
 type jeq1 int32
 
 func (j jeq1) exec(vm *vm) {
-	if vm.stack[vm.sp-1].ToBoolean() {
+	if vm.pop().ToBoolean() {
 		vm.pc += int(j)
 	} else {
 		vm.pc++
@@ -2245,10 +2233,10 @@ type _not struct{}
 var not _not
 
 func (_not) exec(vm *vm) {
-	if vm.stack[vm.sp-1].ToBoolean() {
-		vm.stack[vm.sp-1] = valueFalse
+	if vm.pop().ToBoolean() {
+		vm.push(valueFalse)
 	} else {
-		vm.stack[vm.sp-1] = valueTrue
+		vm.push(valueTrue)
 	}
 	vm.pc++
 }
@@ -2459,16 +2447,15 @@ type _op_in struct{}
 var op_in _op_in
 
 func (_op_in) exec(vm *vm) {
-	left := vm.stack[vm.sp-2]
-	right := vm.r.toObject(vm.stack[vm.sp-1])
+	right := vm.r.toObject(vm.pop())
+	left := vm.pop()
 
 	if right.hasProperty(left) {
-		vm.stack[vm.sp-2] = valueTrue
+		vm.push(valueTrue)
 	} else {
-		vm.stack[vm.sp-2] = valueFalse
+		vm.push(valueFalse)
 	}
 
-	vm.sp--
 	vm.pc++
 }
 
@@ -2540,17 +2527,17 @@ type _throw struct{}
 var throw _throw
 
 func (_throw) exec(vm *vm) {
-	panic(vm.stack[vm.sp-1])
+	panic(vm.pop())
 }
 
 type _new uint32
 
 func (n _new) exec(vm *vm) {
-	sp := vm.sp - int(n)
-	obj := vm.stack[sp-1]
-	ctor := vm.r.toConstructor(obj)
-	vm.stack[sp-1] = ctor(vm.stack[sp:vm.sp], nil)
-	vm.sp = sp
+	values := vm.popSlice(int(n))
+	obj := vm.pop()
+	constructor := vm.r.toConstructor(obj)
+
+	vm.push(constructor(values, nil))
 	vm.pc++
 }
 
@@ -2573,7 +2560,7 @@ var typeof _typeof
 
 func (_typeof) exec(vm *vm) {
 	var r Value
-	switch v := vm.stack[vm.sp-1].(type) {
+	switch v := vm.pop().(type) {
 	case valueUndefined, valueUnresolved:
 		r = stringUndefined
 	case valueNull:
@@ -2600,7 +2587,7 @@ func (_typeof) exec(vm *vm) {
 	default:
 		panic(fmt.Errorf("Unknown type: %T", v))
 	}
-	vm.stack[vm.sp-1] = r
+	vm.push(r)
 	vm.pc++
 }
 
@@ -2637,7 +2624,7 @@ func (formalArgs createArgs) exec(vm *vm) {
 		i++
 	}
 
-	args._putProp("callee", vm.stack[vm.sb-1], true, false, true)
+	args._putProp("callee", vm.pop(), true, false, true)
 	vm.push(v)
 	vm.pc++
 }
@@ -2674,8 +2661,7 @@ var enterWith _enterWith
 
 func (_enterWith) exec(vm *vm) {
 	vm.newStash()
-	vm.stash.obj = vm.stack[vm.sp-1].ToObject(vm.r)
-	vm.sp--
+	vm.stash.obj = vm.pop().ToObject(vm.r)
 	vm.pc++
 }
 
@@ -2769,9 +2755,8 @@ type _iterate struct{}
 var iterate _iterate
 
 func (_iterate) exec(vm *vm) {
-	iter := vm.r.getIterator(vm.stack[vm.sp-1], nil)
+	iter := vm.r.getIterator(vm.pop(), nil)
 	vm.iterStack = append(vm.iterStack, iterStackItem{iter: iter})
-	vm.sp--
 	vm.pc++
 }
 
