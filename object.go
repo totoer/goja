@@ -834,7 +834,7 @@ func (o *baseObject) _putSym(s *Symbol, prop Value) {
 }
 
 func (o *baseObject) tryPrimitive(methodName unistring.String) Value {
-	if method, ok := o.val.self.getStr(methodName, nil).(*Object); ok {
+	if method, ok := o.val.self.getStr(methodName, o.val).(*Object); ok {
 		if call, ok := method.self.assertCallable(); ok {
 			v := call(FunctionCall{
 				This: o.val,
@@ -869,8 +869,10 @@ func (o *baseObject) toPrimitiveString() Value {
 		return v
 	}
 
-	o.val.runtime.typeErrorResult(true, "Could not convert %v to primitive", o)
-	return nil
+	// Fixme: this case need to convert `Object.create(null)` to string
+	return _null
+	// o.val.runtime.typeErrorResult(true, "Could not convert %v to primitive", o)
+	// return nil
 }
 
 func (o *baseObject) toPrimitive() Value {
