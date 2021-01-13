@@ -75,9 +75,11 @@ func (self *_parser) parseStatement() ast.Statement {
 	case token.WITH:
 		return self.parseWithStatement()
 	case token.VAR:
-		return self.parseVariableStatement(token.VAR)
+		return self.parseVariableStatement(self.token)
 	case token.LET:
-		return self.parseVariableStatement(token.LET)
+		return self.parseVariableStatement(self.token)
+	case token.CONST:
+		return self.parseVariableStatement(self.token)
 	case token.FUNCTION:
 		self.parseFunction(true)
 		// FIXME

@@ -80,6 +80,7 @@ const (
 
 	VAR
 	LET
+	CONST
 	FOR
 	NEW
 	TRY
@@ -175,6 +176,7 @@ var token2string = [...]string{
 	DO:                          "do",
 	VAR:                         "var",
 	LET:                         "let",
+	CONST:                       "const",
 	FOR:                         "for",
 	NEW:                         "new",
 	TRY:                         "try",
@@ -282,8 +284,7 @@ var keywordTable = map[string]_keyword{
 		token: INSTANCEOF,
 	},
 	"const": {
-		token:         KEYWORD,
-		futureKeyword: true,
+		token: CONST,
 	},
 	"class": {
 		token:         KEYWORD,

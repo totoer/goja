@@ -150,13 +150,15 @@ func (self *_parser) parseVariableDeclaration(declarationList *[]*ast.VariableEx
 
 	name := self.parsedLiteral
 	idx := self.idx
-	
-	var varType ast.VarType
 
-	if t == token.VAR {
-		varType = ast.VAR
-	} else if t == token.LET {
+	var varType ast.VarType
+	switch t {
+	case token.LET:
 		varType = ast.LET
+	case token.CONST:
+		varType = ast.CONST
+	default:
+		varType = ast.VAR
 	}
 
 	self.next()

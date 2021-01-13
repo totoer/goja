@@ -1996,18 +1996,11 @@ func TestBar(t *testing.T) {
 
 func TestBaz(t *testing.T) {
 	const SCRIPT = `
-		let a = "aabb";
-		a = a.replace("aa", "bb");
+	var a = 1;
+	let b = 1;
+	const c = 1;
 
-		function foo(symbol, count) {
-			var result = "";
-			for(var i = 0; i < count; i++) {
-				result = result.concat(symbol)
-			}
-			return result;
-		}
-
-		a == foo("b", 4);
+	(a + b + c) == 3;
 	`
 
 	testScript1(SCRIPT, valueTrue, t)

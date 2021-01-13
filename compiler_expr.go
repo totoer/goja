@@ -1557,11 +1557,13 @@ func (e *compiledVariableExpr) emitGetter(putOnStack bool) {
 
 func (c *compiler) compileVariableExpression(v *ast.VariableExpression) compiledExpr {
 	var typeOfScope runtimeScopeType
-
-	if v.VarType == ast.VAR {
-		typeOfScope = functionScope
-	} else if v.VarType == ast.LET {
+	switch v.VarType {
+	case ast.LET:
 		typeOfScope = blockScope
+	case ast.CONST:
+		typeOfScope = blockScope
+	default:
+		typeOfScope = functionScope
 	}
 
 	r := &compiledVariableExpr{
