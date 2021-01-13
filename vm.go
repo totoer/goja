@@ -1354,6 +1354,8 @@ func (_getElemCallee) exec(vm *vm) {
 	if prop == nil {
 		prop = memberUnresolved{valueUnresolved{r: vm.r, ref: propName.string()}}
 	}
+
+	vm.push(value)
 	vm.push(prop)
 
 	vm.pc++
