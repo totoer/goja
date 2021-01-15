@@ -36,39 +36,26 @@ type context struct {
 }
 
 // New Code
-type runtimeScopeType int
+type scopeType int
 
 const (
-	functionScope runtimeScopeType = iota
+	functionScope scopeType = iota
 	blockScope
 )
 
 type runtimeScope struct {
-	typeOfScope runtimeScopeType
+	typeOfScope scopeType
 	values      map[unistring.String]Value
 	outer       *runtimeScope
 }
 
-func (s *runtimeScope) declare(name unistring.String, typeOfScope runtimeScopeType) {
-	if typeOfScope == s.typeOfScope || (s.typeOfScope == functionScope && typeOfScope == blockScope) {
-		s.values[name] = _undefined
-	} else {
-		for buffer := s; buffer != nil; buffer = buffer.outer {
-			if buffer.typeOfScope == functionScope {
-				buffer.values[name] = _undefined
-				break
-			}
-		}
-	}
-}
-
-func (s *runtimeScope) existsValue(name unistring.String, typeOfScope runtimeScopeType) bool {
+func (s *runtimeScope) existsValue(name unistring.String, typeOfScope scopeType) bool {
 	if typeOfScope == s.typeOfScope || (s.typeOfScope == functionScope && typeOfScope == blockScope) {
 		_, ok := s.values[name]
 		return ok
 	} else {
 		for buffer := s; buffer != nil; buffer = buffer.outer {
-			if buffer.typeOfScope == functionScope {
+			if buffer.typeOfScope == typeOfScope {
 				_, ok := s.values[name]
 				return ok
 			}
@@ -76,6 +63,19 @@ func (s *runtimeScope) existsValue(name unistring.String, typeOfScope runtimeSco
 	}
 
 	return false
+}
+
+func (s *runtimeScope) declare(name unistring.String, typeOfScope scopeType) {
+	if typeOfScope == s.typeOfScope || (s.typeOfScope == functionScope && typeOfScope == blockScope) {
+		s.values[name] = _undefined
+	} else {
+		for buffer := s; buffer != nil; buffer = buffer.outer {
+			if buffer.typeOfScope == typeOfScope {
+				buffer.values[name] = _undefined
+				break
+			}
+		}
+	}
 }
 
 func (s *runtimeScope) setValue(name unistring.String, value Value) bool {
@@ -199,7 +199,7 @@ type vm struct {
 	interruptLock sync.Mutex
 }
 
-func (vm *vm) newRuntimeScope(typeOfScope runtimeScopeType) {
+func (vm *vm) newRuntimeScope(typeOfScope scopeType) {
 	vm.runtimeScope = &runtimeScope{
 		typeOfScope: typeOfScope,
 		values:      make(map[unistring.String]Value),
@@ -1849,7 +1849,7 @@ func (n getVar1Callee) exec(vm *vm) {
 // New Code
 type declare struct {
 	name        unistring.String
-	typeOfScope runtimeScopeType
+	typeOfScope scopeType
 }
 
 func (d *declare) exec(vm *vm) {

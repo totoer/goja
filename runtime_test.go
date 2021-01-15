@@ -1996,11 +1996,9 @@ func TestBar(t *testing.T) {
 
 func TestBaz(t *testing.T) {
 	const SCRIPT = `
-	var a = 1;
-	let b = 1;
-	const c = 1;
-
-	(a + b + c) == 3;
+	let a = 1;
+	let a = 2;
+	a == 2;
 	`
 
 	testScript1(SCRIPT, valueTrue, t)

@@ -161,7 +161,8 @@ type compiledVariableExpr struct {
 	name        unistring.String
 	initializer compiledExpr
 	expr        *ast.VariableExpression
-	typeOfScope runtimeScopeType
+	typeOfScope scopeType
+	isConst     bool
 }
 
 type compiledEnumGetExpr struct {
@@ -470,27 +471,27 @@ func (e *compiledIdentifierExpr) deleteExpr() compiledExpr {
 		e.c.throwSyntaxError(e.offset, "Delete of an unqualified identifier in strict mode")
 		panic("Unreachable")
 	}
-	if _, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
-		if !found {
-			r := &deleteGlobalExpr{
-				name: e.name,
-			}
-			r.init(e.c, file.Idx(0))
-			return r
-		} else {
-			r := &constantExpr{
-				val: valueFalse,
-			}
-			r.init(e.c, file.Idx(0))
-			return r
-		}
-	} else {
-		r := &deleteVarExpr{
-			name: e.name,
-		}
-		r.init(e.c, file.Idx(e.offset+1))
-		return r
-	}
+	// if _, found, noDynamics := e.c.scope.lookupName(e.name); noDynamics {
+	// 	if !found {
+	// 		r := &deleteGlobalExpr{
+	// 			name: e.name,
+	// 		}
+	// 		r.init(e.c, file.Idx(0))
+	// 		return r
+	// 	} else {
+	// 		r := &constantExpr{
+	// 			val: valueFalse,
+	// 		}
+	// 		r.init(e.c, file.Idx(0))
+	// 		return r
+	// 	}
+	// } else {
+	// 	r := &deleteVarExpr{
+	// 		name: e.name,
+	// 	}
+	// 	r.init(e.c, file.Idx(e.offset+1))
+	// 	return r
+	// }
 }
 
 type compiledDotExpr struct {
@@ -1521,6 +1522,14 @@ func (c *compiler) compileLogicalAnd(left, right ast.Expression, idx file.Idx) c
 }
 
 func (e *compiledVariableExpr) emitGetter(putOnStack bool) {
+	seted, exists := e.c.compilerScope.existsName(e.name, e.typeOfScope)
+
+	if e.typeOfScope == blockScope && exists && seted {
+		e.c.throwSyntaxError(e.offset, "Identifier '%s' has already been declared", e.name)
+	}
+
+	e.c.compilerScope.declare(e.name, e.typeOfScope)
+
 	e.c.emit(&declare{
 		name:        e.name,
 		typeOfScope: e.typeOfScope,
@@ -1532,6 +1541,11 @@ func (e *compiledVariableExpr) emitGetter(putOnStack bool) {
 		e.c.emit(&setScopedValue{
 			name: e.name,
 		})
+
+		e.c.compilerScope.setName(e.name, e.typeOfScope)
+
+	} else if e.isConst {
+		e.c.throwSyntaxError(e.offset, "Missing initializer in const declaration")
 	}
 
 	/* if !putOnStack {
@@ -1556,12 +1570,14 @@ func (e *compiledVariableExpr) emitGetter(putOnStack bool) {
 }
 
 func (c *compiler) compileVariableExpression(v *ast.VariableExpression) compiledExpr {
-	var typeOfScope runtimeScopeType
+	var typeOfScope scopeType
+	isConst := false
 	switch v.VarType {
 	case ast.LET:
 		typeOfScope = blockScope
 	case ast.CONST:
 		typeOfScope = blockScope
+		isConst = true
 	default:
 		typeOfScope = functionScope
 	}
@@ -1570,6 +1586,7 @@ func (c *compiler) compileVariableExpression(v *ast.VariableExpression) compiled
 		name:        v.Name,
 		initializer: c.compileExpression(v.Initializer),
 		typeOfScope: typeOfScope,
+		isConst:     true,
 	}
 	r.init(c, v.Idx0())
 	return r

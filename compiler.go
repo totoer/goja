@@ -54,12 +54,65 @@ type compiler struct {
 	block      *block
 	blockStart int
 
+	compilerScope *compilerScope
+
 	currentBlock int
 
 	enumGetExpr compiledEnumGetExpr
 
 	evalVM *vm
 }
+
+// New Code
+type compilerScope struct {
+	outer       *compilerScope
+	typeOfScope scopeType
+	names       map[unistring.String]bool
+}
+
+func (s *compilerScope) existsName(name unistring.String, typeOfScope scopeType) (bool, bool) {
+	if typeOfScope == s.typeOfScope || (s.typeOfScope == functionScope && typeOfScope == blockScope) {
+		seted, ok := s.names[name]
+		return seted, ok
+	} else {
+		for buffer := s; buffer != nil; buffer = buffer.outer {
+			if buffer.typeOfScope == typeOfScope {
+				seted, ok := s.names[name]
+				return seted, ok
+			}
+		}
+	}
+
+	return false, false
+}
+
+func (s *compilerScope) declare(name unistring.String, typeOfScope scopeType) {
+	if typeOfScope == s.typeOfScope || (s.typeOfScope == functionScope && typeOfScope == blockScope) {
+		s.names[name] = false
+	} else {
+		for buffer := s; buffer != nil; buffer = buffer.outer {
+			if buffer.typeOfScope == typeOfScope {
+				buffer.names[name] = false
+				break
+			}
+		}
+	}
+}
+
+func (s *compilerScope) setName(name unistring.String, typeOfScope scopeType) {
+	if typeOfScope == s.typeOfScope || (s.typeOfScope == functionScope && typeOfScope == blockScope) {
+		s.names[name] = true
+	} else {
+		for buffer := s; buffer != nil; buffer = buffer.outer {
+			if buffer.typeOfScope == typeOfScope {
+				buffer.names[name] = true
+				break
+			}
+		}
+	}
+}
+
+// End New Code
 
 type scope struct {
 	names      map[unistring.String]uint32
