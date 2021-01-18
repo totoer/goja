@@ -180,6 +180,18 @@ func (c *compiler) popScope() {
 	c.scope = c.scope.outer
 }
 
+func (c *compiler) enterCompilerScope(typeOfScope scopeType) {
+	c.compilerScope = &compilerScope{
+		outer:       c.compilerScope,
+		typeOfScope: typeOfScope,
+		names:       make(map[unistring.String]bool),
+	}
+}
+
+func (c *compiler) leaveCompilerScope() {
+	c.compilerScope = c.compilerScope.outer
+}
+
 func newCompiler() *compiler {
 	c := &compiler{
 		p: &Program{},
@@ -188,6 +200,7 @@ func newCompiler() *compiler {
 	c.enumGetExpr.init(c, file.Idx(0))
 
 	c.newScope()
+	c.enterCompilerScope(functionScope)
 	c.scope.dynamic = true
 	return c
 }

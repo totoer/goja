@@ -46,6 +46,7 @@ const (
 type runtimeScope struct {
 	typeOfScope scopeType
 	values      map[unistring.String]Value
+	consts      []unistring.String
 	outer       *runtimeScope
 }
 
@@ -65,28 +66,40 @@ func (s *runtimeScope) existsValue(name unistring.String, typeOfScope scopeType)
 	return false
 }
 
-func (s *runtimeScope) declare(name unistring.String, typeOfScope scopeType) {
+func (s *runtimeScope) declare(name unistring.String, typeOfScope scopeType, isConst bool) {
 	if typeOfScope == s.typeOfScope || (s.typeOfScope == functionScope && typeOfScope == blockScope) {
 		s.values[name] = _undefined
+		if isConst {
+			s.consts = append(s.consts, name)
+		}
 	} else {
 		for buffer := s; buffer != nil; buffer = buffer.outer {
 			if buffer.typeOfScope == typeOfScope {
 				buffer.values[name] = _undefined
+				if isConst {
+					buffer.consts = append(buffer.consts, name)
+				}
 				break
 			}
 		}
 	}
 }
 
-func (s *runtimeScope) setValue(name unistring.String, value Value) bool {
+func (s *runtimeScope) setValue(name unistring.String, value Value) (bool, bool) {
 	for buffer := s; buffer != nil; buffer = buffer.outer {
-		if _, ok := buffer.values[name]; ok {
+		if currentValue, ok := buffer.values[name]; ok {
+			for _, v := range buffer.consts {
+				if v == name && currentValue != _undefined {
+					return false, false
+				}
+			}
+
 			buffer.values[name] = value
-			return true
+			return true, true
 		}
 	}
 
-	return false
+	return false, true
 }
 
 func (s *runtimeScope) getValue(name unistring.String) (Value, bool) {
@@ -380,7 +393,7 @@ func (vm *vm) newStash() {
 
 func (vm *vm) init() {
 	vm.newRuntimeScope(functionScope)
-	vm.runtimeScope.declare(unistring.String("this"), functionScope)
+	vm.runtimeScope.declare(unistring.String("this"), functionScope, false)
 	vm.runtimeScope.setValue(unistring.String("this"), vm.r.globalObject)
 }
 
@@ -1850,10 +1863,11 @@ func (n getVar1Callee) exec(vm *vm) {
 type declare struct {
 	name        unistring.String
 	typeOfScope scopeType
+	isConst     bool
 }
 
 func (d *declare) exec(vm *vm) {
-	vm.runtimeScope.declare(d.name, d.typeOfScope)
+	vm.runtimeScope.declare(d.name, d.typeOfScope, d.isConst)
 	vm.pc++
 }
 
@@ -1863,9 +1877,11 @@ type setScopedValue struct {
 
 func (s *setScopedValue) exec(vm *vm) {
 	value := vm.pop()
-	ok := vm.runtimeScope.setValue(s.name, value)
-	if !ok {
+	exists, canSet := vm.runtimeScope.setValue(s.name, value)
+	if !exists && canSet {
 		vm.r.globalObject.self.setOwnStr(s.name, value, false)
+	} else if !canSet {
+		panic(vm.r.NewTypeError("Assignment to constant variable."))
 	}
 	vm.pc++
 }

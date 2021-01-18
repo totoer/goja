@@ -736,9 +736,11 @@ func (c *compiler) compileGenericLabeledStatement(v ast.Statement, needResult bo
 
 func (c *compiler) compileBlockStatement(v *ast.BlockStatement, needResult bool) {
 	if c.currentBlock != blockFunction {
+		c.enterCompilerScope(blockScope)
 		c.emit(enterBlock)
 		defer func() {
 			c.emit(leaveBlock)
+			c.leaveCompilerScope()
 		}()
 	} else {
 		c.currentBlock = -1
