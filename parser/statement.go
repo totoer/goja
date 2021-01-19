@@ -17,13 +17,15 @@ import (
 )
 
 func (self *_parser) parseBlockStatement() *ast.BlockStatement {
-	inFunction := self.scope.inFunction
-	self.openScope()
-	self.scope.inFunction = inFunction
-	defer func() {
+	if !self.scope.inFunction {
+		inFunction := self.scope.inFunction
+		self.openScope()
 		self.scope.inFunction = inFunction
-		self.closeScope()
-	}()
+		defer func() {
+			self.scope.inFunction = inFunction
+			self.closeScope()
+		}()
+	}
 
 	node := &ast.BlockStatement{}
 	node.LeftBrace = self.expect(token.LEFT_BRACE)

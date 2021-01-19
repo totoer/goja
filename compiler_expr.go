@@ -844,6 +844,14 @@ func (e *compiledFunctionLiteral) emitGetter(putOnStack bool) {
 	e.c.compileFunctions(e.expr.DeclarationList)
 	e.c.compileStatement(e.expr.Body, false)
 
+	lastInstraction := e.c.p.code[len(e.c.p.code)-1]
+	switch lastInstraction.(type) {
+	case _ret:
+		break
+	default:
+		e.c.emit(loadUndef, ret)
+	}
+
 	e.c.emit(leaveFunction)
 	e.c.leaveCompilerScope()
 
