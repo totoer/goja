@@ -133,23 +133,27 @@ func (f *funcObject) call(call FunctionCall, newTarget Value) Value {
 	vm := f.val.runtime.vm
 	pc := vm.pc
 
-	vm.stack.expand(vm.sp + len(call.Arguments) + 1)
-	vm.stack[vm.sp] = f.val
-	vm.sp++
-	if call.This != nil {
-		vm.stack[vm.sp] = call.This
-	} else {
-		vm.stack[vm.sp] = _undefined
-	}
-	vm.sp++
-	for _, arg := range call.Arguments {
+	n := len(call.Arguments)
+	// for _, arg := range call.Arguments {
+	for i := n - 1; i >= 0; i-- {
+		arg := call.Arguments[i]
 		if arg != nil {
-			vm.stack[vm.sp] = arg
+			vm.push(arg) // vm.stack[vm.sp] = arg
 		} else {
-			vm.stack[vm.sp] = _undefined
+			vm.push(_undefined) // vm.stack[vm.sp] = _undefined
 		}
-		vm.sp++
+		// vm.sp++
 	}
+
+	// vm.stack.expand(vm.sp + len(call.Arguments) + 1)
+	// vm.push(f.val) // vm.stack[vm.sp] = f.val
+	// vm.sp++
+	if call.This != nil {
+		vm.push(call.This) // vm.stack[vm.sp] = call.This
+	} else {
+		vm.push(_undefined) // vm.stack[vm.sp] = _undefined
+	}
+	// vm.sp++
 
 	vm.pc = -1
 	vm.pushCtx()

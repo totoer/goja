@@ -1996,12 +1996,12 @@ func TestBar(t *testing.T) {
 
 func TestBaz(t *testing.T) {
 	const SCRIPT = `
-	function Foo() {
-		this.a = 1;
+	function Foo(a, b) {
+		this.a = a - b;
 		return this;
 	}
 
-	let foo = new Foo();
+	let foo = new Foo(2, 1);
 
 	foo.a === 1;
 	`
